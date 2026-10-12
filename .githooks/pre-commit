@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# 公开仓库：提交前扫描敏感信息。install.sh 会把 core.hooksPath 指到本目录。
+exec "$(git rev-parse --show-toplevel)/scripts/scan-secrets.sh" --staged

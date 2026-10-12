@@ -12,3 +12,6 @@ for s in "$R"/skills/*/; do
   if [[ -e "$dst" || -L "$dst" ]]; then mkdir -p "$BK"; mv "$dst" "$BK/"; echo "  ↪ 备份 $dst → $BK/"; fi
   ln -s "$s" "$dst"; echo "  + $n → $s"
 done
+
+# 提交前敏感信息扫描（仓库是公开的）
+git -C "$R" config core.hooksPath .githooks && echo "  ✓ pre-commit 敏感信息扫描已启用"

@@ -7,7 +7,7 @@ description: 按 melonkid 多云运维规范初始化项目。用于"新建项�
 
 目标：项目从第一天起就满足运维规范，将来上线时**不用返工**。
 
-规范原文与主机事实在私有仓库 `~/Workspace/melon-ops`（下称 ops 仓库）：
+规范原文与主机事实在私有仓库 `$OPS_REPO`（环境变量，定义在 `~/.zsh/conf.d/ops.zsh`，通常是 `~/Workspace/melon-ops`；下称 ops 仓库）：
 
 | 读什么 | 在哪 |
 |---|---|
@@ -15,7 +15,7 @@ description: 按 melonkid 多云运维规范初始化项目。用于"新建项�
 | 站点与分工 | `registry/sites.yaml`、`docs/02-sites.md` |
 | 服务清单字段 | `registry/services/_schema.yaml`，参考同目录现有服务 |
 
-**ops 仓库不在本机时**：照常做第 1–3 步，跳过第 4 步，结束时提醒用户"未注册"。本 skill 在公开仓库里，**不要把 IP、密钥、面板路径写进本 skill 或模板**。
+**`$OPS_REPO` 不存在时**：照常做第 1–3 步，跳过第 4 步，结束时提醒用户"未注册"。本 skill 在公开仓库里，**不要把 IP、密钥、面板路径写进本 skill 或模板**。
 
 ## 硬性要求
 
@@ -39,7 +39,7 @@ description: 按 melonkid 多云运维规范初始化项目。用于"新建项�
 | 仓库可见性 | 私有（默认）/ 公开 |
 | 只对"服务" | 主站点、数据等级（T0/T1/T2）、对外域名 |
 
-站点怎么选（以 ops 仓库 `docs/02-sites.md` 为准）：重点业务（小程序）→ ali；个人项目 → tx；jd 是运维中心 + 温备，**不放新业务**。
+站点怎么选：按 ops 仓库 `docs/02-sites.md` 的分工（哪个站点跑重点业务、哪个跑个人项目、哪个是运维中心 + 温备），**运维中心不放新业务**。
 数据等级：有用户数据（账号、订单、消息、对话）就是 **T0**；用户上传的媒体是 T1；能从代码或公开来源重建的是 T2。
 
 ### 1. 本地目录与 git
@@ -130,7 +130,7 @@ gh repo create imelonkid/<名> --private --source . --remote origin --push   # �
 2. check.sh 的结果；
 3. **需要用户本人做的事**：
    - 在 1Password 创建 `ops/<名>/prod`；
-   - 服务器上建目录（ali 上需要 sudo）：`sudo mkdir -p /opt/<名>/data && sudo chown <部署用户> /opt/<名>`；
+   - 服务器上建目录（sudo 要密码的主机由用户执行）：`sudo mkdir -p /opt/<名>/data && sudo chown <部署用户> /opt/<名>`；
    - 对外域名：确认承接站点已完成 ICP 接入；DNS 记录 TTL ≤ 300；反向代理与 HTTPS 证书；
 4. 上线前还缺的准入项（规范 §9.2）：首次备份与恢复验证、Gatus 探活、告警。这些放到上线时用 server-ops skill 做，**初始化阶段不要碰服务器**。
 

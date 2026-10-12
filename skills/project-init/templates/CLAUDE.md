@@ -13,7 +13,7 @@ __本地启动命令__
 - 主站点：__SITE__ · 目录 `/opt/__NAME__/` · 数据等级 __TIER__
 - 发布：`scripts/deploy.sh`（本机构建 linux/amd64 → 传镜像 → 重建 → 健康检查，不过自动回滚）
 - 配置：`.env.example` 列出全部变量；真实值在 1Password `ops/__NAME__/prod`，服务器上的 `.env` 只是副本
-- 服务注册：`~/Workspace/melon-ops/registry/services/__NAME__.yaml`；服务器操作用 server-ops skill
+- 服务注册：`$OPS_REPO/registry/services/__NAME__.yaml`；服务器操作用 server-ops skill
 
 ## 约定
 

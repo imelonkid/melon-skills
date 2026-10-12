@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>项目初始化 · melon-skills</title>
+<script>try{var t=localStorage.getItem('melon-skills-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="project-init">
+
+<div class="wrap"><div class="hero">
+  <div class="eyebrow">SKILL · project-init</div>
+  <h1>项目初始化</h1>
+  <p>新项目从第一天起就满足运维规范：代码在 GitHub、密钥不进 git、容器有资源上限和健康检查、上线前知道还差什么。将来上线时不用返工。</p>
+  <div class="chips"><span class="chip">触发：新建项目 / 初始化工程 / 把已有项目纳入规范</span></div>
+</div></div>
+
+<div class="page">
+<aside class="toc"><b>目录</b>
+  <a href="#hard">硬性要求</a><a href="#flow">流程</a><a href="#files">生成的文件</a><a href="#container">容器规范</a><a href="#check">检查脚本</a><a href="#handoff">交给用户的事</a><a href="#never">不会做的事</a>
+</aside>
+<main>
+
+<section id="hard">
+  <h2>硬性要求</h2>
+  <ol class="rules">
+    <li><b>所有项目必须由 git 托管，远端必须是 GitHub。</b>不用跑在业务服务器上的自建托管（比如 Gitea）：服务器挂了，代码和数据会一起没。</li>
+    <li><b>第一次提交前 <code>.gitignore</code> 就要就位。</b><code>.env</code>、<code>data/</code>、数据库文件、私钥一律不进 git。</li>
+    <li><b>新仓库默认私有</b>，用户明确说公开才公开。</li>
+    <li>默认分支 <code>main</code>；提交信息 <code>&lt;类型&gt;(&lt;范围&gt;): &lt;中文描述&gt;</code>。</li>
+  </ol>
+</section>
+
+<section id="flow">
+  <h2>流程</h2>
+  <ol class="steps">
+    <li><b>先问清楚</b><p>只问推不出来的，一次问完：项目名、类型（服务 / 静态站 / 库）、技术栈、仓库可见性；服务再问主站点、数据等级、对外域名。</p></li>
+    <li><b>建目录与 git</b><p>默认 <code>~/Workspace/&lt;名&gt;</code>。已有项目保留历史只补缺的；发现已提交的密钥就停下来告诉用户。</p></li>
+    <li><b>生成骨架</b><p>README、CLAUDE.md；服务另加 Dockerfile、compose、<code>.env.example</code>、部署脚本、<code>/health</code> 接口。</p></li>
+    <li><b>首次提交并推到 GitHub</b><p>提交前逐个确认文件里没有密钥和数据；<code>gh repo create --private --push</code>。</p></li>
+    <li><b>服务注册</b><p>在私有运维仓库 <code>$OPS_REPO/registry/services/</code> 登记，状态 <code>building</code>；做不到的条款写进 <code>known_gaps</code>。推不推送问用户。</p></li>
+    <li><b>检查</b><p>跑 <code>scripts/check.sh</code>，✗ 必须修，△ 写进 README 的「上线前待办」。</p></li>
+    <li><b>交付</b><p>报告仓库地址、检查结果，以及需要用户本人做的事。</p></li>
+  </ol>
+</section>
+
+<section id="files">
+  <h2>生成的文件</h2>
+  <table><thead><tr><th>文件</th><th>模板</th><th>适用</th></tr></thead><tbody>
+    <tr><td><code>.gitignore</code></td><td><code>templates/gitignore</code></td><td>全部</td></tr>
+    <tr><td><code>CLAUDE.md</code></td><td><code>templates/CLAUDE.md</code></td><td>全部</td></tr>
+    <tr><td><code>README.md</code></td><td>按项目写</td><td>全部</td></tr>
+    <tr><td><code>deploy/docker-compose.prod.yml</code></td><td><code>templates/docker-compose.prod.yml</code></td><td>服务</td></tr>
+    <tr><td><code>deploy/Dockerfile</code></td><td>按技术栈写，多阶段构建</td><td>服务</td></tr>
+    <tr><td><code>.env.example</code></td><td><code>templates/env.example</code></td><td>服务</td></tr>
+    <tr><td><code>scripts/deploy.sh</code></td><td><code>templates/deploy.sh</code></td><td>服务</td></tr>
+    <tr><td>运维仓库 <code>registry/services/&lt;名&gt;.yaml</code></td><td><code>templates/service.yaml</code></td><td>服务</td></tr>
+  </tbody></table>
+  <h3>部署脚本做什么</h3>
+  <ol class="steps">
+    <li><b>工作区必须干净</b><p>版本号取 <code>git describe</code>，线上版本能追溯到 commit。</p></li>
+    <li><b>本机构建 linux/amd64</b><p>服务器上不构建（访问官方源慢）。</p></li>
+    <li><b>传镜像、同步 compose</b><p><code>docker save | ssh docker load</code>；compose 文件从仓库同步，服务器上不手改。</p></li>
+    <li><b>重建并检查健康</b><p>60 秒内 <code>/health</code> 不通就自动回滚到上一版。T0 服务可在 <code>pre-deploy.sh</code> 里先做备份。</p></li>
+  </ol>
+</section>
+
+<section id="container">
+  <h2>容器规范</h2>
+  <table><thead><tr><th>要求</th><th>为什么</th></tr></thead><tbody>
+    <tr><td><code>mem_limit</code> · <code>healthcheck</code> · <code>restart: unless-stopped</code></td><td>一个服务吃满内存不能拖垮整台机器；挂了能被发现、能自己起来</td></tr>
+    <tr><td>端口只绑 <code>127.0.0.1</code></td><td>对外统一走反向代理 + HTTPS，不开新的安全组端口</td></tr>
+    <tr><td>数据只在 <code>./data/</code></td><td>备份只需要盯一个目录</td></tr>
+    <tr><td>用服务内的 <code>env_file: .env</code></td><td><code>--env-file</code> 插值不会记进容器标签，灾备重建时容易漏</td></tr>
+    <tr><td>对象存储用 S3 兼容接口</td><td>主云出事时能切到另一朵云的副本</td></tr>
+    <tr><td>日志 JSON 到 stdout，敏感字段脱敏</td><td>统一采集，不泄露密码、token、手机号</td></tr>
+    <tr><td>SQLite 备份只用 <code>sqlite3 .backup</code></td><td>WAL 模式下直接 <code>cp</code> 会拿到不一致的文件</td></tr>
+  </tbody></table>
+</section>
+
+<section id="check">
+  <h2>检查脚本</h2>
+<pre><code>~/.claude/skills/project-init/scripts/check.sh &lt;项目目录&gt;</code></pre>
+  <p>只读，有 ✗ 时退出码为 1。检查内容：</p>
+  <table><thead><tr><th>类别</th><th>检查项</th></tr></thead><tbody>
+    <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code> 和 <code>data/</code></td></tr>
+    <tr><td>文件</td><td>README、CLAUDE.md；服务另查 <code>.env.example</code>、部署脚本</td></tr>
+    <tr><td>compose</td><td>每个服务都有 <code>mem_limit</code> / <code>healthcheck</code> / <code>restart</code>；端口只绑本机；<code>env_file</code>；数据挂载；是否用了厂商专有存储 SDK</td></tr>
+    <tr><td>注册</td><td><code>$OPS_REPO/registry/services/&lt;名&gt;.yaml</code> 是否存在</td></tr>
+  </tbody></table>
+</section>
+
+<section id="handoff">
+  <h2>交给用户的事</h2>
+  <ul>
+    <li>在 1Password 创建 <code>ops/&lt;名&gt;/prod</code>，填真实配置；</li>
+    <li>服务器上建 <code>/opt/&lt;名&gt;/data</code>（需要 sudo 的主机由用户执行）；</li>
+    <li>对外域名：确认承接站点已完成 ICP 接入、DNS TTL ≤ 300、反向代理与证书；</li>
+    <li>上线前的准入项（首次备份与恢复验证、探活、告警）在上线时用 <a href="server-ops.html">server-ops</a> 做。</li>
+  </ul>
+</section>
+
+<section id="never">
+  <h2>不会做的事</h2>
+  <div class="note bad">初始化阶段不 ssh 服务器、不改安全组和 DNS；不替用户在 1Password 或云控制台录入任何东西；不 <code>push --force</code>、不改已有项目的历史；用户没说公开就不建公开仓库。</div>
+</section>
+
+</main></div>
+<footer>melon-skills · <a href="https://github.com/imelonkid/melon-skills/tree/main/skills/project-init">skills/project-init</a></footer>
+<script src="site.js"></script>
+</body>
+</html>

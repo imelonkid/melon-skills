@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>melon-skills</title>
+<meta name="description" content="melonkid 的 Claude Code skills：项目初始化、服务器运维、文章审阅。">
+<script>try{var t=localStorage.getItem('melon-skills-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="site/style.css">
+</head>
+<body data-page="home">
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">CLAUDE CODE SKILLS</div>
+    <h1>melon-skills</h1>
+    <p>我日常交给 Claude 做的几类固定工作，写成了 skill：新项目怎么起、服务器怎么管、文章发布前怎么审。仓库公开，但不含任何主机坐标或密钥——这些事实留在本机环境变量和私有运维仓库里，skill 运行时才去读。</p>
+    <div class="chips"><span class="chip"><b id="count">3</b> 个 skill</span><span class="chip">公开仓库</span><span class="chip">零敏感信息</span><span class="chip">环境变量驱动</span></div>
+  </div>
+</div>
+
+<div class="page">
+<aside class="toc"><b>目录</b>
+  <a href="#skills">全部 skill</a>
+  <a href="#arch">工作原理</a>
+  <a href="#install">安装</a>
+  <a href="#env">环境变量</a>
+  <a href="#safety">敏感信息防线</a>
+  <a href="#maintain">维护约定</a>
+</aside>
+<main>
+
+<section id="skills">
+  <h2>全部 skill</h2>
+  <p class="lead">点卡片或顶部菜单查看每个 skill 的独立介绍。</p>
+  <div class="cards" id="cards"></div>
+  <noscript><p><a href="site/project-init.html">项目初始化</a> · <a href="site/server-ops.html">服务器运维</a> · <a href="site/article-review.html">文章审阅</a></p></noscript>
+</section>
+
+<section id="arch">
+  <h2>工作原理：流程公开，事实私有</h2>
+  <p>skill 只描述<strong>怎么做</strong>：步骤、检查项、红线。至于<strong>对谁做</strong>——哪台主机、什么 IP、面板在哪个端口——全部来自本机环境，公开仓库里一个都不写。</p>
+  <div class="diagram">
+  <svg viewBox="0 0 860 300" role="img" aria-label="公开 skill 通过环境变量读取私有事实">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    <rect x="20" y="40" width="240" height="210" rx="14" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="40" y="70" font-weight="700">melon-skills（公开）</text>
+    <text x="40" y="96" class="muted" font-size="13">GitHub · 任何人可见</text>
+    <text x="40" y="132" font-size="14">· SKILL.md：流程与红线</text>
+    <text x="40" y="158" font-size="14">· scripts/：只读巡检、检查</text>
+    <text x="40" y="184" font-size="14">· templates/：项目模板</text>
+    <text x="40" y="210" font-size="14">· pre-commit 敏感信息扫描</text>
+
+    <rect x="310" y="40" width="240" height="210" rx="14" fill="var(--surface-2)" stroke="var(--line)"/>
+    <text x="330" y="70" font-weight="700">本机环境变量</text>
+    <text x="330" y="96" class="muted" font-size="13">~/.zsh/conf.d/ops.zsh</text>
+    <text x="330" y="132" font-size="14">· OPS_REPO / SKILLS_REPO</text>
+    <text x="330" y="158" font-size="14">· OPS_SITES 与 &lt;站点&gt;_SSH / _IP</text>
+    <text x="330" y="184" font-size="14">· BLOG_REPO / BLOG_VAULT</text>
+    <text x="330" y="210" font-size="14">· 敏感值：ops.secrets.zsh</text>
+
+    <rect x="600" y="40" width="240" height="210" rx="14" fill="var(--warn-soft)" stroke="var(--warn)"/>
+    <text x="620" y="70" font-weight="700">melon-ops（私有）</text>
+    <text x="620" y="96" class="muted" font-size="13">GitHub 私有仓库</text>
+    <text x="620" y="132" font-size="14">· 规范、站点规划、主机档案</text>
+    <text x="620" y="158" font-size="14">· 服务注册表、运维基线</text>
+    <text x="620" y="184" font-size="14">· 手册、踩坑记录、白皮书</text>
+    <text x="620" y="210" font-size="14">· ops.zsh 本身也在这里</text>
+
+    <line x1="262" y1="145" x2="306" y2="145" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="268" y="134" class="muted" font-size="12">读取</text>
+    <line x1="552" y1="145" x2="596" y2="145" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="556" y="134" class="muted" font-size="12">指向</text>
+    <text x="430" y="285" text-anchor="middle" class="muted" font-size="13">换电脑：装好私有仓库的 ops.zsh，公开 skill 自动拿到全部坐标；别人 clone 本仓库，拿不到任何一台机器的信息</text>
+  </svg>
+  </div>
+  <p>两个仓库的分工：</p>
+  <table><thead><tr><th>放在哪</th><th>放什么</th><th>不放什么</th></tr></thead><tbody>
+    <tr><td><b>melon-skills</b>（公开）</td><td>通用流程、检查脚本、模板、红线</td><td>IP、端口、面板入口、密钥、账号、个人信息</td></tr>
+    <tr><td><b>melon-ops</b>（私有）</td><td>主机事实、注册表、基线、手册、<code>ops.zsh</code></td><td>密码、AK/SK、面板安全入口（只在 1Password）</td></tr>
+    <tr><td><b>1Password</b></td><td>SSH 私钥、云账号、<code>ops.secrets.zsh</code> 原件</td><td>—</td></tr>
+  </tbody></table>
+</section>
+
+<section id="install">
+  <h2>安装</h2>
+<pre><code>git clone git@github.com:imelonkid/melon-skills.git ~/Workspace/melon-skills
+~/Workspace/melon-skills/install.sh</code></pre>
+  <p><code>install.sh</code> 把 <code>skills/*</code> 逐个软链到 <code>~/.claude/skills/</code>，并启用提交前的敏感信息扫描。可以重复执行。</p>
+  <p>运维电脑用 <code>melon-ops/workstation/setup.sh</code> 初始化时会自动克隆并安装本仓库，不用单独做。</p>
+  <div class="note ok"><b>本机是软链接。</b>改 <code>~/.claude/skills/&lt;名&gt;</code> 就是改本仓库，改完记得提交推送。</div>
+</section>
+
+<section id="env">
+  <h2>环境变量</h2>
+  <p>skill 依赖的变量如下（这里只列名字，值在私有的 <code>ops.zsh</code>）。缺了的话脚本会直接报出缺哪个，不会猜默认值。</p>
+  <table><thead><tr><th>变量</th><th>含义</th><th>用到的 skill</th></tr></thead><tbody>
+    <tr><td><code>OPS_REPO</code></td><td>私有运维仓库路径</td><td>全部</td></tr>
+    <tr><td><code>SKILLS_REPO</code></td><td>本仓库路径</td><td>server-ops</td></tr>
+    <tr><td><code>OPS_SITES</code></td><td>站点前缀列表，如 <code>ALI TX JD</code>；顺序即巡检顺序</td><td>server-ops</td></tr>
+    <tr><td><code>&lt;P&gt;_SSH</code> · <code>&lt;P&gt;_IP</code></td><td>每个站点的 ssh 别名与公网 IP</td><td>server-ops</td></tr>
+    <tr><td><code>&lt;P&gt;_CONTAINERS</code></td><td>该站点应该在跑的容器，用于漂移检测（可选）</td><td>server-ops</td></tr>
+    <tr><td><code>&lt;P&gt;_PANEL_PORT</code></td><td>1Panel 端口，用于确认它<b>没有</b>暴露在公网（可选）</td><td>server-ops</td></tr>
+    <tr><td><code>OPS_SSH</code> · <code>OPS_IP</code> · <code>OPS_GATUS_PORT</code> · <code>OPS_BESZEL_PORT</code></td><td>运维中心与监控</td><td>server-ops</td></tr>
+    <tr><td><code>BLOG_REPO</code> · <code>BLOG_VAULT</code> · <code>BLOG_SRC</code></td><td>博客仓库、Obsidian 笔记仓库、草稿目录</td><td>article-review</td></tr>
+  </tbody></table>
+</section>
+
+<section id="safety">
+  <h2>敏感信息防线</h2>
+  <ol class="steps">
+    <li><b>写的时候：只写变量名</b><p>路径、主机、端口一律用 <code>$VAR</code> 引用；示例值用 <code>__占位符__</code>。</p></li>
+    <li><b>提交的时候：pre-commit 自动扫描</b><p><code>scripts/scan-secrets.sh</code> 检查公网 IP、私钥、云厂商 AK、各类 token、手机号、身份证号；还会把本机 <code>ops.zsh</code> 里的 IP、端口、面板入口的<strong>实际值</strong>当字面量去搜。命中就拒绝提交。</p></li>
+    <li><b>随时：全量扫描</b><p>不带参数运行 <code>scripts/scan-secrets.sh</code> 扫全部已跟踪文件。确属误报的行，行尾加 <code>scan:allow</code>。</p></li>
+  </ol>
+  <div class="note bad"><b>已经推上去了怎么办？</b>公开仓库的历史可能已被抓取。先轮换泄露的密钥或改掉暴露的端口，再处理历史——顺序不能反。</div>
+</section>
+
+<section id="maintain">
+  <h2>维护约定</h2>
+  <p>完整规则见仓库根目录的 <code>AGENTS.md</code>（<code>CLAUDE.md</code> 引用它）。最重要的一条：</p>
+  <div class="note warn"><b>改代码必须同步改文档。</b>新增、改名、改流程、改依赖的环境变量时，同一个提交里要同时更新：<code>SKILL.md</code>、<code>README.md</code> 的清单、<code>site/site.js</code> 的清单、对应的 <code>site/&lt;skill&gt;.html</code>，以及本页受影响的段落。</div>
+</section>
+
+</main>
+</div>
+
+<footer>melon-skills · MIT · <a href="https://github.com/imelonkid/melon-skills">GitHub</a></footer>
+<script src="site/site.js"></script>
+</body>
+</html>

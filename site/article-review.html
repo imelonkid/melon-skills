@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文章审阅 · melon-skills</title>
+<script>try{var t=localStorage.getItem('melon-skills-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="article-review">
+
+<div class="wrap"><div class="hero">
+  <div class="eyebrow">SKILL · article-review</div>
+  <h1>文章审阅</h1>
+  <p>博客「朝花夕拾」发布前的必经一步：查错别字、语病、文笔、标签和图片。只审上次发布以来改过的文章，产出一个待审 commit 和逐字对比的 diff 页面，作者点头才发布。</p>
+  <div class="chips"><span class="chip">触发：审一下文章 / 检查文章 / 看看有没有错别字</span></div>
+</div></div>
+
+<div class="page">
+<aside class="toc"><b>目录</b>
+  <a href="#rules">两条铁律</a><a href="#scope">审哪几篇</a><a href="#check">审什么</a><a href="#after">审完之后</a><a href="#env">依赖</a>
+</aside>
+<main>
+
+<section id="rules">
+  <h2>两条铁律</h2>
+  <div class="note warn"><b>笔记是唯一事实来源。</b>线上文章由 Obsidian 笔记同步生成；博客仓库里的 <code>src/content/posts/</code> 是产物。要改内容，永远先改笔记再同步，否则下次同步就被覆盖，笔记和线上还会悄悄分叉。</div>
+  <div class="note warn"><b>改动先落成待审 commit。</b>审阅的产出是建议，采不采纳是作者的事。diff 比在对话里复述准确得多。</div>
+</section>
+
+<section id="scope">
+  <h2>审哪几篇</h2>
+  <p>每次成功上线后，笔记仓库会自动打一个 <code>pub/YYYYMMDD-N</code> 标签。审阅范围 = <b>最新的发布标签 → 现在</b>。</p>
+  <p>博客仓库里的 <code>review-scan.mjs</code> 按正文哈希比对，已审且没改过的自动跳过，不重复分析；输出「没有需要审阅的文章」时就如实说，不硬找活干。</p>
+</section>
+
+<section id="check">
+  <h2>审什么</h2>
+  <table><thead><tr><th>类别</th><th>重点</th></tr></thead><tbody>
+    <tr><td>错别字</td><td>的 / 地 / 得、在 / 再、做 / 作、需 / 须……；技术名词大小写（GitHub、JavaScript、MySQL）</td></tr>
+    <tr><td>语病</td><td>成分残缺、搭配不当、啰嗦、语序、中英文之间的空格与标点</td></tr>
+    <tr><td>文笔与风格</td><td>克制、具体、有人味：具体物优先于抽象概括；技术文也要有人；去掉 AI 腔；长短句交错；结尾收束而不拔高</td></tr>
+    <tr><td>frontmatter</td><td><code>date</code> 是发表日，上线后不改；<code>updated</code> 自动写；<code>publish</code> / <code>draft</code> / <code>slug</code> / <code>excerpt</code></td></tr>
+    <tr><td>标签（硬卡控）</td><td>视觉宽度 ≤ 8、必须在白名单里；默认不新增，优先用现有标签覆盖</td></tr>
+    <tr><td>图片（必查）</td><td>跑同步与发布前检查确认没有断链；配图要有说明；截图里不能露内部信息</td></tr>
+  </tbody></table>
+  <p>每条问题都给原文和改法；没问题的篇目也要明说「未见明显问题」。</p>
+</section>
+
+<section id="after">
+  <h2>审完之后</h2>
+  <ol class="steps">
+    <li><b>先给报告</b><p>按篇列出问题，作者决定采纳哪些。</p></li>
+    <li><b>确认笔记仓库干净</b><p>作者自己的改动和审阅建议不混在同一个 commit 里。</p></li>
+    <li><b>改笔记，提交一个待审 commit</b><p>消息里写清改了什么、为什么。</p></li>
+    <li><b>生成逐字对比的 diff 页面发给作者</b><p>中文改几个字，<code>git diff</code> 会整行标红；这个页面只高亮真正变动的字符。</p></li>
+    <li><b>记录审阅状态</b><p><code>review-scan.mjs --mark</code>；已上线的文章正文变了会自动写 <code>updated</code>。没审过的文章发布前检查会直接挡住。</p></li>
+    <li><b>作者点头后发布</b><p>发布成功才打 <code>pub/</code> 标签，失败不打，避免下次漏审。</p></li>
+  </ol>
+</section>
+
+<section id="env">
+  <h2>依赖</h2>
+  <table><thead><tr><th>变量</th><th>含义</th></tr></thead><tbody>
+    <tr><td><code>BLOG_REPO</code></td><td>博客仓库；审阅脚本 <code>review-scan.mjs</code>、<code>review-diff.mjs</code> 在这里</td></tr>
+    <tr><td><code>BLOG_VAULT</code></td><td>Obsidian 笔记仓库（本身是 git 仓库）</td></tr>
+    <tr><td><code>BLOG_SRC</code></td><td>草稿目录</td></tr>
+  </tbody></table>
+  <p>变量缺失时 skill 会提示，不猜路径。</p>
+</section>
+
+</main></div>
+<footer>melon-skills · <a href="https://github.com/imelonkid/melon-skills/tree/main/skills/article-review">skills/article-review</a></footer>
+<script src="site.js"></script>
+</body>
+</html>
