@@ -59,6 +59,8 @@ $OPS_REPO/baseline/check.py                          # 对照 registry/baseline.
 
 **改主机环境一律走基线**：`$OPS_REPO/baseline/apply.py <主机> <步骤>`。root 主机直接执行；sudo 要密码的主机，apply.py 会把脚本传到 `/tmp/ops-apply/` 并打印一条 `ssh -t <主机> 'sudo bash …'`，**交给用户执行**——这是刻意保留的人工确认关卡。做完用 `check.py <主机>` 复核。
 
+**业务发布与回滚一律用项目自己的 `scripts/deploy.sh <tag|rollback>`**（project-init 规范）：线上版本看服务器 `/opt/<名>/RELEASE` 与 `deploy.log`。不要在服务器上手动改镜像标签、compose 或 `docker run`；还没改造成 tag 发布的项目，先按 project-init 改造。
+
 **重点业务机分段改**：先做低风险、不重启的 → 复核 → 再动存储 / 内核 → 用户确认后手动重启。重建业务容器以注册表里该服务的 `deploy.up` 为准（有的服务依赖 `--env-file`，漏了会起错配置）。
 
 ## 红线

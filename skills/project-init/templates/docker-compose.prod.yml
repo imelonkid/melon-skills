@@ -1,16 +1,19 @@
 # 线上：/opt/__NAME__/docker-compose.prod.yml —— 由 scripts/deploy.sh 同步，服务器上不要手改
-#   data/  持久化数据（唯一的数据目录）
+#   data/  持久化数据（唯一的数据目录；备份任务按注册表 assets 从这里取）
 #   .env   真实配置，来自 1Password「ops/__NAME__/prod」，不进 git
 # 对外：https://__DOMAIN__ → 反向代理 → 127.0.0.1:__PORT__
+# 不写 logging:：日志轮转由主机基线统一配置（json-file 10m × 3）
 name: __NAME__
 
 services:
   app:
-    image: __NAME__:prod                 # deploy.sh 每次把新版本打成 :prod，上一版留作 :rollback
+    image: __NAME__:prod                 # deploy.sh 把要上线的 tag（__NAME__:vX.Y.Z）打成 :prod；版本号已烘进镜像 APP_VERSION
     container_name: __NAME__
     env_file: .env                       # 不用 --env-file 插值：它不进容器标签，灾备重建会漏
     environment:
       TZ: Asia/Shanghai
+      OTEL_SERVICE_NAME: __NAME__
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod   # service.version 由代码读 APP_VERSION；cloud.provider 由主机侧 Collector 补
     ports:
       - "127.0.0.1:__PORT__:__PORT__"    # 只绑本机，对外走反向代理
     volumes:

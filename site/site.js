@@ -1,69 +1,69 @@
-// 唯一的 skill 清单：首页卡片和每页顶部菜单都从这里生成。新增 skill 先改这里。
+// 唯一的 skill 清单：侧栏「页面」菜单和首页卡片都从这里生成。新增 skill 先改这里。
 const SKILLS = [
-  { id: 'project-init', name: '项目初始化', summary: '按多云运维规范起一个新项目：git + GitHub、骨架、部署模板、服务注册、准入检查。', tags: ['git', 'docker', '规范'] },
+  { id: 'project-init', name: '项目初始化', summary: '按 melon-ops 运维规范起项目：GitHub 托管、自动定级、容器与可观测达标、服务注册、上线准入检查。', tags: ['git', 'docker', '规范'] },
   { id: 'server-ops', name: '服务器运维', summary: '多云服务器的巡检、排障、部署、基线收敛与灾备。坐标全部来自环境变量，事实在私有仓库。', tags: ['ssh', '监控', '基线'] },
   { id: 'article-review', name: '文章审阅', summary: '博客发布前的审阅：错别字、语病、文笔、标签与图片，产出可逐字对比的待审 commit。', tags: ['博客', 'Obsidian', '写作'] },
 ];
-const REPO = 'https://github.com/imelonkid/melon-skills';
+const VERSION = 'v1.0 · 2026-10-12';
 
 (function () {
-  const here = document.body.dataset.page;            // 'home' 或 skill id
-  const root = here === 'home' ? 'site/' : '';         // 首页在仓库根，skill 页在 site/
+  const here = document.body.dataset.page;               // 'home' 或 skill id
+  const pre = here === 'home' ? 'site/' : '';             // 首页在仓库根，skill 页在 site/
   const home = here === 'home' ? 'index.html' : '../index.html';
 
-  // 菜单
-  const nav = document.createElement('header');
-  nav.className = 'nav';
-  nav.innerHTML = `<div class="nav-in">
-    <a class="brand" href="${home}"><i></i>melon-skills</a>
-    <nav class="menu">
-      <a href="${home}" class="${here === 'home' ? 'on' : ''}">首页</a>
-      ${SKILLS.map(s => `<a href="${root}${s.id}.html" class="${here === s.id ? 'on' : ''}">${s.name}</a>`).join('')}
-    </nav>
-    <div class="tools">
-      <button id="theme" title="切换明暗">◐</button>
-      <a href="${REPO}" title="GitHub">GitHub</a>
-    </div></div>`;
-  document.body.prepend(nav);
-  nav.querySelector('.menu .on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  // 章节编号：给每个 section 的 h2 加 01、02…（hero 算 01）
+  const secs = [...document.querySelectorAll('main > section[id]')];
+  secs.forEach((s, i) => {
+    const h = s.querySelector(':scope > h2');
+    if (h && !h.querySelector('.no')) h.insertAdjacentHTML('afterbegin', `<span class="no">${String(i + 2).padStart(2, '0')}</span>`);
+  });
+
+  // 侧栏：页面菜单 + 本页目录
+  const hero = document.querySelector('header.hero');
+  const items = [hero && { id: hero.id, t: hero.dataset.toc || '概览' }, ...secs.map(s => ({ id: s.id, t: s.dataset.toc || s.querySelector('h2').lastChild.textContent.trim() }))].filter(Boolean);
+  const nav = document.querySelector('nav.toc');
+  nav.innerHTML = `
+    <div class="brand">melon-skills</div>
+    <div class="ver">${VERSION}</div>
+    <div class="grp">页面</div>
+    <ul class="pages">
+      <li><a href="${home}" class="${here === 'home' ? 'cur' : ''}">首页<small>index</small></a></li>
+      ${SKILLS.map(s => `<li><a href="${pre}${s.id}.html" class="${here === s.id ? 'cur' : ''}">${s.name}<small>${s.id}</small></a></li>`).join('')}
+    </ul>
+    <div class="grp">本页目录</div>
+    <ol>${items.map(x => `<li><a href="#${x.id}">${x.t}</a></li>`).join('')}</ol>
+    <button class="theme" id="theme">切换明暗</button>
+    <div class="grp"><a href="https://github.com/imelonkid/melon-skills">GitHub ↗</a></div>`;
 
   // 首页卡片
-  const cards = document.getElementById('cards');
-  if (cards) cards.innerHTML = SKILLS.map(s => `
-    <a class="card" href="${root}${s.id}.html">
-      <span class="k">${s.id}</span><h3>${s.name}</h3><p>${s.summary}</p>
-      <div class="chips">${s.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>
+  const box = document.getElementById('skills-list');
+  if (box) box.innerHTML = SKILLS.map(s => `
+    <a class="skill" href="${pre}${s.id}.html">
+      <span class="id">${s.id}</span><h4>${s.name}</h4><p>${s.summary}</p>
+      <span class="tags">${s.tags.map(t => `<span class="badge b-n">${t}</span>`).join('')}</span>
       <span class="more">查看介绍 →</span>
     </a>`).join('');
-  const count = document.getElementById('count');
-  if (count) count.textContent = SKILLS.length;
+  document.querySelectorAll('[data-count]').forEach(e => (e.textContent = SKILLS.length));
 
-  // 明暗切换（只记在本机浏览器）
-  const KEY = 'melon-skills-theme';
-  try { const t = localStorage.getItem(KEY); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-  document.getElementById('theme').onclick = () => {
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem(KEY, next); } catch (e) {}
-  };
-
-  // 代码块复制
-  document.querySelectorAll('pre').forEach(pre => {
-    const b = document.createElement('button');
-    b.className = 'copy'; b.textContent = '复制';
-    b.onclick = () => navigator.clipboard.writeText(pre.innerText.replace(/复制$/, '').trim())
-      .then(() => { b.textContent = '已复制'; setTimeout(() => (b.textContent = '复制'), 1200); });
-    pre.appendChild(b);
+  // 复制按钮
+  document.querySelectorAll('pre').forEach(p => {
+    const b = document.createElement('button'); b.className = 'copy'; b.textContent = '复制';
+    b.onclick = () => { navigator.clipboard?.writeText(p.innerText.replace(/复制$/, '').trim()); b.textContent = '已复制'; setTimeout(() => (b.textContent = '复制'), 1200); };
+    p.appendChild(b);
   });
 
   // 目录高亮
-  const links = [...document.querySelectorAll('.toc a')];
-  if (links.length) {
-    const io = new IntersectionObserver(es => es.forEach(e => {
-      if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.hash === '#' + e.target.id));
-    }), { rootMargin: '-70px 0px -70% 0px' });
-    links.forEach(a => { const t = document.querySelector(a.hash); t && io.observe(t); });
-  }
+  const links = [...nav.querySelectorAll('ol a')];
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id));
+  }), { rootMargin: '-30% 0px -65% 0px' });
+  document.querySelectorAll('main section[id], header.hero').forEach(s => io.observe(s));
+
+  // 明暗切换（记住选择，与白皮书同一机制）
+  const root = document.documentElement;
+  document.getElementById('theme').onclick = () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('ms-theme', root.dataset.theme); } catch (e) {}
+  };
 })();

@@ -1,42 +1,43 @@
 # 字段说明见 _schema.yaml；做不到的条款写进 known_gaps，不要空着假装满足
 name: __NAME__
-status: building
-tier: __TIER__
+status: building                         # 上线后改 active
+tier: __TIER__                           # 取所有资产中的最高等级（规范 §2）
 dr_level: __DR__                         # T0 有状态 → L2；T1 → L1；无状态 → L3
 site: __SITE__
-failover_site: __FAILOVER__              # 按 sites.yaml 的 standby_pairs
-witness_site: __WITNESS__
+failover_site: __FAILOVER__              # sites.yaml standby_pairs 中 primary=__SITE__ 那条的 standby
+witness_site: __WITNESS__                # 同一条的 witness
 
 code:
   repo: git@github.com:imelonkid/__NAME__.git
   path: .
+  depends_on: []                         # 构建依赖的兄弟仓库，同样必须在 GitHub
 
 deploy:
   dir: /opt/__NAME__
   compose: deploy/docker-compose.prod.yml
-  build: scripts/deploy.sh               # 本机构建 → docker save | ssh docker load
+  build: scripts/deploy.sh <tag>         # 一律按 tag：patch|minor|major 发新版，vX.Y.Z 上线 / 回滚到指定版本
   up: cd /opt/__NAME__ && docker compose -f docker-compose.prod.yml up -d
   env_example: .env.example
   secrets: ops/__NAME__/prod
 
 endpoints:
   - name: __NAME__
-    url: http://127.0.0.1:__PORT__/health
+    url: https://__DOMAIN__/health       # 业务探活走公网域名：顺带验 DNS / 证书 / 反代
     public: __DOMAIN__
 
 resources:
   mem_limit: 512m
 
-assets:
+assets:                                  # 每份持久化数据一条；备份任务从这里生成（规范 §7）
   - id: __NAME__-db
     tier: __TIER__
     kind: sqlite
     location: data/__NAME__.db
-    interval: 6h
+    interval: 6h                         # T0 6h；T1 24h；T2 不填但必须写 rebuild
 
   - id: __NAME__-secrets
     tier: S
     kind: file
     location: .env
 
-known_gaps: []
+known_gaps: []                           # 描述 + 替代路径 + 计划阶段

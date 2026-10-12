@@ -4,110 +4,188 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>项目初始化 · melon-skills</title>
-<script>try{var t=localStorage.getItem('melon-skills-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem('ms-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-page="project-init">
+<div class="layout">
 
-<div class="wrap"><div class="hero">
-  <div class="eyebrow">SKILL · project-init</div>
-  <h1>项目初始化</h1>
-  <p>新项目从第一天起就满足运维规范：代码在 GitHub、密钥不进 git、容器有资源上限和健康检查、上线前知道还差什么。将来上线时不用返工。</p>
-  <div class="chips"><span class="chip">触发：新建项目 / 初始化工程 / 把已有项目纳入规范</span></div>
-</div></div>
+<nav class="toc" aria-label="目录"><noscript><a href="../index.html">首页</a></noscript></nav>
 
-<div class="page">
-<aside class="toc"><b>目录</b>
-  <a href="#hard">硬性要求</a><a href="#flow">流程</a><a href="#files">生成的文件</a><a href="#container">容器规范</a><a href="#check">检查脚本</a><a href="#handoff">交给用户的事</a><a href="#never">不会做的事</a>
-</aside>
 <main>
 
-<section id="hard">
-  <h2>硬性要求</h2>
-  <ol class="rules">
-    <li><b>所有项目必须由 git 托管，远端必须是 GitHub。</b>不用跑在业务服务器上的自建托管（比如 Gitea）：服务器挂了，代码和数据会一起没。</li>
-    <li><b>第一次提交前 <code>.gitignore</code> 就要就位。</b><code>.env</code>、<code>data/</code>、数据库文件、私钥一律不进 git。</li>
-    <li><b>新仓库默认私有</b>，用户明确说公开才公开。</li>
-    <li>默认分支 <code>main</code>；提交信息 <code>&lt;类型&gt;(&lt;范围&gt;): &lt;中文描述&gt;</code>。</li>
-  </ol>
+<header class="hero" id="overview">
+  <div class="kicker">SKILL · PROJECT-INIT</div>
+  <h1>项目初始化</h1>
+  <p class="lead">按 melon-ops 多云运维规范起项目：代码在 GitHub、按规范定级、容器与可观测达标、注册进服务清单、上线前知道还差什么。规范原文每次运行时从私有仓库读取，本 skill 与之冲突时以规范为准。</p>
+  <div class="stats">
+    <div class="stat"><b>GitHub</b><span>所有项目必须托管</span></div>
+    <div class="stat"><b>自动定级</b><span>数据等级 · 灾备等级 · 主备裁判</span></div>
+    <div class="stat"><b>7</b><span>个模板</span></div>
+    <div class="stat"><b>tag</b><span>发布与回滚的唯一单位</span></div>
+  </div>
+</header>
+
+<section id="trigger" data-toc="什么时候用">
+  <h2>什么时候用</h2>
+  <div class="flow"><span class="s">新建项目</span><span class="s">初始化工程</span><span class="s">起一个新服务</span><span class="s">new project</span><span class="s">把已有项目纳入规范</span><span class="s">补 git</span><span class="s">准备上线</span></div>
+  <h3>每次先读的规范</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>文件（<code>$OPS_REPO/</code>）</th><th>用来决定</th></tr></thead>
+    <tbody>
+      <tr><td><code>docs/01-standard.md</code></td><td>数据分级 §2、灾备等级 §3、可重建性 §5、备份 §7、可观测 §8、准入与变更 §9</td></tr>
+      <tr><td><code>registry/sites.yaml</code></td><td>站点用途与角色、ICP 接入状态、主备裁判配对 <code>standby_pairs</code></td></tr>
+      <tr><td><code>registry/services/_schema.yaml</code></td><td>注册表字段</td></tr>
+      <tr><td><code>registry/baseline.toml</code></td><td>目标主机的 Docker / Compose 版本、日志轮转</td></tr>
+      <tr><td><code>docs/04-runbook.md</code></td><td>「部署新服务」上线清单</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
-<section id="flow">
+<section id="hard" data-toc="硬性要求">
+  <h2>硬性要求</h2>
+  <div class="principles">
+    <div class="pr"><h4>必须托管到 GitHub <span class="badge b-n">§5.1</span></h4><p>不用跑在业务服务器上的自建托管；构建依赖的兄弟仓库同样要在 GitHub。</p><div class="why">服务器挂了，代码和数据会一起没。</div></div>
+    <div class="pr"><h4>先有 .gitignore 再提交 <span class="badge b-n">§5.4</span></h4><p><code>.env</code>、<code>data/</code>、数据库文件、私钥一律不进 git。</p><div class="why">进了历史就很难清干净。</div></div>
+    <div class="pr"><h4>服务必须注册 <span class="badge b-n">§9.1</span></h4><p>不在 <code>registry/services/</code> 里的服务不允许上线。</p><div class="why">备份、探活、灾备都从注册表生成。</div></div>
+    <div class="pr"><h4>版本可追溯 <span class="badge b-n">§5.1</span></h4><p>分支 <code>main</code>；发布打 <code>v*</code> 标签；镜像标签取 <code>git describe</code>。</p><div class="why">出事时知道线上跑的是哪一版。</div></div>
+  </div>
+  <div class="callout info"><span class="ic">ℹ️</span><p>新仓库<b>默认私有</b>，用户明确说公开才公开。</p></div>
+</section>
+
+<section id="grade" data-toc="自动定级">
+  <h2>自动定级</h2>
+  <p class="intro">只问推不出来的（项目名、类型、技术栈、可见性、域名）；其余由 Claude 按规范推出，写进确认摘要，用户可改。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>项</th><th>怎么推</th></tr></thead>
+    <tbody>
+      <tr><td>数据等级 <span class="badge b-n">§2</span></td><td>有用户数据（账号、订单、消息、对话）→ <span class="badge b-bad">T0</span>；上传媒体、业务配置 → <span class="badge b-warn">T1</span>；可重建 → <span class="badge b-ok">T2</span>。取所有资产里最高的</td></tr>
+      <tr><td>灾备等级 <span class="badge b-n">§3</span></td><td>T0 有状态 → L2 温备 + 持续复制；T1 → L1；无状态 → L3</td></tr>
+      <tr><td>主站点</td><td>只放 <code>roles</code> 含 compute 的站点；写着某业务「专用」的不放别的项目；运维中心 / 温备站点不放新业务</td></tr>
+      <tr><td>备站点与裁判</td><td>直接取 <code>standby_pairs</code> 中 <code>primary</code> = 主站点那一条，不自己发明</td></tr>
+      <tr><td>ICP <span class="badge b-n">§4.7</span></td><td>主、备站点 <code>icp_access</code> 都是 true 才能对外；pending 写进 <code>known_gaps</code></td></tr>
+      <tr><td>数据库</td><td>默认 SQLite（WAL），单文件放 <code>data/</code>，能直接上 Litestream 做 L2；确需 MySQL / Postgres 用只读账号导出、binlog / WAL 复制</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="flow" data-toc="流程">
   <h2>流程</h2>
   <ol class="steps">
-    <li><b>先问清楚</b><p>只问推不出来的，一次问完：项目名、类型（服务 / 静态站 / 库）、技术栈、仓库可见性；服务再问主站点、数据等级、对外域名。</p></li>
-    <li><b>建目录与 git</b><p>默认 <code>~/Workspace/&lt;名&gt;</code>。已有项目保留历史只补缺的；发现已提交的密钥就停下来告诉用户。</p></li>
-    <li><b>生成骨架</b><p>README、CLAUDE.md；服务另加 Dockerfile、compose、<code>.env.example</code>、部署脚本、<code>/health</code> 接口。</p></li>
-    <li><b>首次提交并推到 GitHub</b><p>提交前逐个确认文件里没有密钥和数据；<code>gh repo create --private --push</code>。</p></li>
-    <li><b>服务注册</b><p>在私有运维仓库 <code>$OPS_REPO/registry/services/</code> 登记，状态 <code>building</code>；做不到的条款写进 <code>known_gaps</code>。推不推送问用户。</p></li>
-    <li><b>检查</b><p>跑 <code>scripts/check.sh</code>，✗ 必须修，△ 写进 README 的「上线前待办」。</p></li>
-    <li><b>交付</b><p>报告仓库地址、检查结果，以及需要用户本人做的事。</p></li>
+    <li><h4>读规范 <span class="who ai">Claude</span></h4><p>上表五份文件；<code>$OPS_REPO</code> 不在就只做 git 和骨架，交付时说明未注册。</p></li>
+    <li><h4>问清楚并定级 <span class="who ai">Claude</span></h4><p>一次问完；定级结果给用户确认。</p></li>
+    <li><h4>目录与 git <span class="who ai">Claude</span></h4><p>默认 <code>~/Workspace/&lt;名&gt;</code>。已有项目 = 纳管模式：先跑 check.sh 拿差距清单，保留历史只补缺的。</p></li>
+    <li><h4>生成骨架 <span class="who ai">Claude</span></h4><p>README（含上线准入清单）、CLAUDE.md；服务另加 Dockerfile、compose、<code>.env.example</code>、部署脚本、<code>/health</code>。</p></li>
+    <li><h4>首次提交并推送 <span class="who ai">Claude</span></h4><pre>gh repo create imelonkid/&lt;名&gt; --private --source . --remote origin --push</pre></li>
+    <li><h4>注册 <span class="who ai">Claude</span></h4><p>在 ops 仓库写 <code>registry/services/&lt;名&gt;.yaml</code>，状态 building；做不到的写 <code>known_gaps</code>，纳管项目的大缺口同时进路线图差距表。推不推送问用户。</p></li>
+    <li><h4>检查 <span class="who ai">Claude</span></h4><p><code>scripts/check.sh</code>：✗ 必须修，△ 写进 README「上线准入」。</p></li>
+    <li><h4>交付 <span class="who me">用户</span></h4><p>1Password 条目、服务器目录、ICP / DNS / 证书——见「交给用户的事」。</p></li>
   </ol>
 </section>
 
-<section id="files">
+<section id="files" data-toc="生成的文件">
   <h2>生成的文件</h2>
-  <table><thead><tr><th>文件</th><th>模板</th><th>适用</th></tr></thead><tbody>
-    <tr><td><code>.gitignore</code></td><td><code>templates/gitignore</code></td><td>全部</td></tr>
-    <tr><td><code>CLAUDE.md</code></td><td><code>templates/CLAUDE.md</code></td><td>全部</td></tr>
-    <tr><td><code>README.md</code></td><td>按项目写</td><td>全部</td></tr>
-    <tr><td><code>deploy/docker-compose.prod.yml</code></td><td><code>templates/docker-compose.prod.yml</code></td><td>服务</td></tr>
-    <tr><td><code>deploy/Dockerfile</code></td><td>按技术栈写，多阶段构建</td><td>服务</td></tr>
-    <tr><td><code>.env.example</code></td><td><code>templates/env.example</code></td><td>服务</td></tr>
-    <tr><td><code>scripts/deploy.sh</code></td><td><code>templates/deploy.sh</code></td><td>服务</td></tr>
-    <tr><td>运维仓库 <code>registry/services/&lt;名&gt;.yaml</code></td><td><code>templates/service.yaml</code></td><td>服务</td></tr>
-  </tbody></table>
-  <h3>部署脚本做什么</h3>
-  <ol class="steps">
-    <li><b>工作区必须干净</b><p>版本号取 <code>git describe</code>，线上版本能追溯到 commit。</p></li>
-    <li><b>本机构建 linux/amd64</b><p>服务器上不构建（访问官方源慢）。</p></li>
-    <li><b>传镜像、同步 compose</b><p><code>docker save | ssh docker load</code>；compose 文件从仓库同步，服务器上不手改。</p></li>
-    <li><b>重建并检查健康</b><p>60 秒内 <code>/health</code> 不通就自动回滚到上一版。T0 服务可在 <code>pre-deploy.sh</code> 里先做备份。</p></li>
-  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>文件</th><th>模板</th><th>适用</th></tr></thead>
+    <tbody>
+      <tr><td><code>.gitignore</code></td><td><code>templates/gitignore</code></td><td><span class="badge b-n">全部</span></td></tr>
+      <tr><td><code>README.md</code></td><td><code>templates/README.md</code>，含 §9.2 上线准入清单</td><td><span class="badge b-n">全部</span></td></tr>
+      <tr><td><code>CLAUDE.md</code></td><td><code>templates/CLAUDE.md</code>，含定级与运维约定</td><td><span class="badge b-n">全部</span></td></tr>
+      <tr><td><code>deploy/docker-compose.prod.yml</code></td><td><code>templates/docker-compose.prod.yml</code></td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>deploy/Dockerfile</code></td><td>按技术栈写，多阶段构建，基础镜像钉版本</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>.env.example</code></td><td><code>templates/env.example</code>，含 OTel 配置</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>scripts/deploy.sh</code></td><td><code>templates/deploy.sh</code></td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>$OPS_REPO/registry/services/&lt;名&gt;.yaml</code></td><td><code>templates/service.yaml</code></td><td><span class="badge b-ok">服务</span> <span class="badge b-ok">静态站</span></td></tr>
+    </tbody>
+  </table></div>
 </section>
 
-<section id="container">
+<section id="container" data-toc="容器规范">
   <h2>容器规范</h2>
-  <table><thead><tr><th>要求</th><th>为什么</th></tr></thead><tbody>
-    <tr><td><code>mem_limit</code> · <code>healthcheck</code> · <code>restart: unless-stopped</code></td><td>一个服务吃满内存不能拖垮整台机器；挂了能被发现、能自己起来</td></tr>
-    <tr><td>端口只绑 <code>127.0.0.1</code></td><td>对外统一走反向代理 + HTTPS，不开新的安全组端口</td></tr>
-    <tr><td>数据只在 <code>./data/</code></td><td>备份只需要盯一个目录</td></tr>
-    <tr><td>用服务内的 <code>env_file: .env</code></td><td><code>--env-file</code> 插值不会记进容器标签，灾备重建时容易漏</td></tr>
-    <tr><td>对象存储用 S3 兼容接口</td><td>主云出事时能切到另一朵云的副本</td></tr>
-    <tr><td>日志 JSON 到 stdout，敏感字段脱敏</td><td>统一采集，不泄露密码、token、手机号</td></tr>
-    <tr><td>SQLite 备份只用 <code>sqlite3 .backup</code></td><td>WAL 模式下直接 <code>cp</code> 会拿到不一致的文件</td></tr>
-  </tbody></table>
+  <div class="tbl"><table>
+    <thead><tr><th>要求</th><th>为什么</th></tr></thead>
+    <tbody>
+      <tr><td><code>mem_limit</code> · <code>healthcheck</code> · <code>restart: unless-stopped</code> <span class="badge b-n">§5.6</span></td><td>一个服务吃满内存不能拖垮整台机器；挂了能被发现、能自己起来</td></tr>
+      <tr><td>端口只绑 <code>127.0.0.1</code> <span class="badge b-n">§6.5</span></td><td>对外统一走反向代理 + HTTPS，不开新的安全组端口</td></tr>
+      <tr><td>数据只在 <code>./data/</code> <span class="badge b-n">§5.5</span></td><td>备份任务按注册表 <code>assets</code> 从这里取</td></tr>
+      <tr><td>服务内 <code>env_file: .env</code></td><td><code>--env-file</code> 插值不进容器标签，灾备重建时会漏（真实踩过）</td></tr>
+      <tr><td>不写 <code>logging:</code> <span class="badge b-n">§6</span></td><td>日志轮转由主机基线统一配置</td></tr>
+      <tr><td>第三方镜像钉版本</td><td>不用 <code>latest</code>，重建时拿到的就是测过的那一版</td></tr>
+      <tr><td>对象存储用 S3 兼容接口 <span class="badge b-n">§5.8</span></td><td>主云出事时能切到另一朵云的副本</td></tr>
+      <tr><td>SQLite 备份只用 <code>sqlite3 .backup</code> <span class="badge b-n">§7</span></td><td>WAL 模式下直接 <code>cp</code> 会拿到不一致的文件</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
-<section id="check">
+<section id="observe" data-toc="可观测">
+  <h2>可观测</h2>
+  <p class="intro">规范 §8。运维中心的 Collector 还没上线也先按这个写，到时只需填一个地址。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>项</th><th>约定</th></tr></thead>
+    <tbody>
+      <tr><td>日志</td><td>JSON 到 stdout，带 <code>trace_id</code>；密码、token、手机号必须脱敏</td></tr>
+      <tr><td>埋点</td><td>OpenTelemetry SDK；<code>OTEL_SERVICE_NAME</code>、<code>OTEL_RESOURCE_ATTRIBUTES</code>（版本、环境、云厂商）由 compose 注入</td></tr>
+      <tr><td>导出</td><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code> 为空 = 不导出；采样在 Collector 做，代码不写死</td></tr>
+      <tr><td>业务指标</td><td><code>&lt;服务&gt;_&lt;领域&gt;_&lt;事件&gt;_total</code>；标签禁止 user_id、URL 原文等高基数值</td></tr>
+      <tr><td>探活</td><td>注册表 <code>endpoints.url</code> 写公网域名的 <code>/health</code>：顺带验 DNS、证书、反代</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="release" data-toc="发布与回滚">
+  <h2>发布与回滚：一律走 tag</h2>
+  <p class="intro">线上版本永远等于某个 git tag。发新版 = 打一个新 tag；回滚 = 上线一个旧 tag。没有 tag 的代码不上线。</p>
+  <div class="cmds">
+    <div class="cmd"><div class="t">发新版（minor / major 同理）</div><pre>scripts/deploy.sh patch</pre></div>
+    <div class="cmd"><div class="t">回滚到上一个成功上线的版本</div><pre>scripts/deploy.sh rollback</pre></div>
+    <div class="cmd"><div class="t">上线 / 回滚到指定 tag</div><pre>scripts/deploy.sh v1.2.0</pre></div>
+    <div class="cmd"><div class="t">线上版本与最近部署事件</div><pre>scripts/deploy.sh status</pre></div>
+  </div>
+  <h3>发新版的流程</h3>
+  <div class="flow"><span class="s">08–23 点窗口</span><span class="a">→</span><span class="s">HEAD 干净且已推到 main</span><span class="a">→</span><span class="s">打 vX.Y.Z 并推到 GitHub</span><span class="a">→</span><span class="s">git archive 从 tag 构建</span><span class="a">→</span><span class="s">镜像 + compose 传到服务器</span><span class="a">→</span><span class="s">T0 先备份</span><span class="a">→</span><span class="s">切到 :prod</span><span class="a">→</span><span class="s">/health 60 秒</span><span class="a">→</span><span class="s">不过自动切回上一版</span></div>
+  <div class="tbl" style="margin-top:12px"><table>
+    <thead><tr><th>规则</th><th>说明 <span class="badge b-n">§5.1 · §9.3</span></th></tr></thead>
+    <tbody>
+      <tr><td>tag 先上 GitHub</td><td>新 tag 只打在已推送的干净 HEAD 上，推到 GitHub 后才构建；线上版本永远能在仓库里找到</td></tr>
+      <tr><td>从 tag 构建</td><td>镜像和 compose 都取自 tag 的内容，与本地工作区无关；版本号经 build-arg 烘进镜像 <code>APP_VERSION</code></td></tr>
+      <tr><td>秒级回滚</td><td>服务器保留最近 5 个版本的镜像和 compose（<code>releases/&lt;tag&gt;.yml</code>），回滚不用重新构建</td></tr>
+      <tr><td>可审计</td><td><code>RELEASE</code> 记当前版本；<code>deploy.log</code> 记时间、tag、类型（release / rollback / redeploy / auto-rollback）、操作人、结果</td></tr>
+      <tr><td>变更窗口</td><td>发新版只在 08–23 点，窗口外 <code>EMERGENCY=1</code> 并 24 小时内补复盘；回滚不受限</td></tr>
+      <tr><td>可回滚的迁移</td><td>数据库迁移必须向后兼容（先扩展、再收缩），回滚到上一个 tag 仍能跑</td></tr>
+      <tr><td>不手改线上</td><td>不在服务器上手动改镜像标签、compose 或 <code>docker run</code>，否则版本记录就不可信</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="check" data-toc="检查脚本">
   <h2>检查脚本</h2>
-<pre><code>~/.claude/skills/project-init/scripts/check.sh &lt;项目目录&gt;</code></pre>
-  <p>只读，有 ✗ 时退出码为 1。检查内容：</p>
-  <table><thead><tr><th>类别</th><th>检查项</th></tr></thead><tbody>
-    <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code> 和 <code>data/</code></td></tr>
-    <tr><td>文件</td><td>README、CLAUDE.md；服务另查 <code>.env.example</code>、部署脚本</td></tr>
-    <tr><td>compose</td><td>每个服务都有 <code>mem_limit</code> / <code>healthcheck</code> / <code>restart</code>；端口只绑本机；<code>env_file</code>；数据挂载；是否用了厂商专有存储 SDK</td></tr>
-    <tr><td>注册</td><td><code>$OPS_REPO/registry/services/&lt;名&gt;.yaml</code> 是否存在</td></tr>
-  </tbody></table>
+  <pre>~/.claude/skills/project-init/scripts/check.sh &lt;项目目录&gt;</pre>
+  <div class="tbl"><table>
+    <thead><tr><th>类别</th><th>检查项</th></tr></thead>
+    <tbody>
+      <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code> 和 <code>data/</code></td></tr>
+      <tr><td>文件</td><td>README、CLAUDE.md；服务另查 <code>.env.example</code>（含 OTel）、Dockerfile 烘入 <code>APP_VERSION</code>、<code>/health</code></td></tr>
+      <tr><td>发布</td><td>deploy.sh <b>按 tag 发布</b>（从 tag 构建）、支持 <code>rollback</code>、有发布窗口、健康检查失败自动回滚</td></tr>
+      <tr><td>compose</td><td><code>mem_limit</code> / <code>healthcheck</code> / <code>restart</code>；端口只绑本机；<code>env_file</code>；数据挂载；没有 <code>logging:</code>；第三方镜像钉版本；没用厂商专有存储 SDK</td></tr>
+      <tr><td>注册表</td><td>已登记；必填字段齐全；<code>code.repo</code> 是 GitHub；没有 TODO / 占位符；L2 的主·备·裁判与 <code>standby_pairs</code> 一致，裁判是第三站点</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
-<section id="handoff">
+<section id="handoff" data-toc="交给用户的事">
   <h2>交给用户的事</h2>
-  <ul>
-    <li>在 1Password 创建 <code>ops/&lt;名&gt;/prod</code>，填真实配置；</li>
-    <li>服务器上建 <code>/opt/&lt;名&gt;/data</code>（需要 sudo 的主机由用户执行）；</li>
-    <li>对外域名：确认承接站点已完成 ICP 接入、DNS TTL ≤ 300、反向代理与证书；</li>
-    <li>上线前的准入项（首次备份与恢复验证、探活、告警）在上线时用 <a href="server-ops.html">server-ops</a> 做。</li>
-  </ul>
+  <ol class="steps">
+    <li><h4>1Password 条目 <span class="who me">用户</span></h4><p>创建 <code>ops/&lt;名&gt;/prod</code>，填真实配置。Claude 不经手密钥值。</p></li>
+    <li><h4>服务器目录 <span class="who me">用户</span></h4><p><code>/opt/&lt;名&gt;/data</code>；sudo 要密码的主机由用户执行。</p></li>
+    <li><h4>域名 <span class="who me">用户</span></h4><p>主、备站点 ICP 接入；DNS TTL ≤ 300；反向代理与证书。</p></li>
+    <li><h4>上线准入 <span class="who ai">Claude</span></h4><p>用 <a href="server-ops.html">server-ops</a>：首次备份 + 恢复验证、备份心跳、Gatus 探活与告警实测、<code>panel</code> 索引、主机档案、注册表改 active。</p></li>
+  </ol>
+  <div class="callout bad"><span class="ic">⛔</span><p><b>初始化阶段不会做：</b>ssh 服务器、改安全组和 DNS；替用户在 1Password 或云控制台录入；<code>push --force</code> 或改已有项目的历史；没说公开就建公开仓库；帮没注册的服务上线。</p></div>
+  <footer>melon-skills · <a href="https://github.com/imelonkid/melon-skills/tree/main/skills/project-init">skills/project-init</a> · 行为以 SKILL.md 为准，本页与之冲突时修正本页</footer>
 </section>
 
-<section id="never">
-  <h2>不会做的事</h2>
-  <div class="note bad">初始化阶段不 ssh 服务器、不改安全组和 DNS；不替用户在 1Password 或云控制台录入任何东西；不 <code>push --force</code>、不改已有项目的历史；用户没说公开就不建公开仓库。</div>
-</section>
-
-</main></div>
-<footer>melon-skills · <a href="https://github.com/imelonkid/melon-skills/tree/main/skills/project-init">skills/project-init</a></footer>
+</main>
+</div>
 <script src="site.js"></script>
 </body>
 </html>
