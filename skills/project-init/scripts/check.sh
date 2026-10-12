@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # 项目规范检查（只读）。✗ 必须修；△ 上线前要补。有 ✗ 时退出码 1。
 #
-#   check.sh [项目目录]          # 默认当前目录
+#   check.sh [项目目录] [服务名]     # 默认当前目录；服务名默认取目录名（注册表里叫法不同时传第二个参数）
 set -uo pipefail
 
 P="$(cd "${1:-.}" && pwd)"
 OPS="${OPS_REPO:-$HOME/Workspace/melon-ops}"
-NAME="$(basename "$P")"
+NAME="${2:-$(basename "$P")}"
 fail=0; warn=0
 ok()  { printf '  ✓ %s\n' "$*"; }
 bad() { printf '  ✗ %s\n' "$*"; fail=$((fail+1)); }
@@ -38,11 +38,11 @@ else
   [[ -z "$(git -C "$P" status --porcelain)" ]] || tip "工作区有未提交的改动"
 
   # 已跟踪的敏感文件
-  leaked="$(git -C "$P" ls-files | grep -Ei '(^|/)\.env(\.[^/]*)?$|\.pem$|\.key$|\.p12$|(^|/)id_(rsa|ed25519)|\.(db|sqlite3?)$|(^|/)data/' | grep -v '\.env\.example$' || true)"
+  # 数据目录按规范只认仓库根与 deploy/ 下的 data/（源码里叫 data 的包不算）
+  leaked="$(git -C "$P" ls-files | grep -Ei '(^|/)\.env(\.[^/]*)?$|\.pem$|\.key$|\.p12$|(^|/)id_(rsa|ed25519)|\.(db|sqlite3?)$|^(deploy/)?data/' | grep -Ev '(^|/)\.env(\.[^/]+)?\.example$' || true)"
   [[ -z "$leaked" ]] && ok "没有跟踪密钥 / 数据文件" || { bad "以下文件不该进 git（已在历史里的需用户决定是否清理并轮换密钥）："; sed 's/^/      /' <<<"$leaked"; }
-  for f in .env data/x.db; do
-    git -C "$P" check-ignore -q --no-index "$f" || bad ".gitignore 没有忽略 $f"
-  done
+  git -C "$P" check-ignore -q --no-index .env || bad ".gitignore 没有忽略 .env"
+  git -C "$P" check-ignore -q --no-index x.db || tip ".gitignore 没有忽略 *.db"
 fi
 
 echo "▸ 文件"
@@ -51,7 +51,10 @@ echo "▸ 文件"
 
 C=""
 for c in deploy/docker-compose.prod.yml docker-compose.prod.yml; do [[ -f "$P/$c" ]] && { C="$P/$c"; break; }; done
-if [[ -z "$C" ]]; then
+if [[ -z "$C" && -f "$OPS/registry/services/$NAME.yaml" ]] && grep -qE '^\s+compose:' "$OPS/registry/services/$NAME.yaml"; then
+  echo "▸ 部署"
+  bad "注册表登记为服务，但仓库没有 deploy/docker-compose.prod.yml"
+elif [[ -z "$C" ]]; then
   echo "▸ 没有 docker-compose.prod.yml，按非服务项目处理"
 else
   echo "▸ 部署（${C#$P/}）"
