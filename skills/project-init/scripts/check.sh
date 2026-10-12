@@ -42,6 +42,19 @@ else
   leaked="$(git -C "$P" ls-files | grep -Ei '(^|/)\.env(\.[^/]*)?$|\.pem$|\.key$|\.p12$|(^|/)id_(rsa|ed25519)|\.(db|sqlite3?)$|^(deploy/)?data/' | grep -Ev '(^|/)\.env(\.[^/]+)?\.example$' || true)"
   [[ -z "$leaked" ]] && ok "没有跟踪密钥 / 数据文件" || { bad "以下文件不该进 git（已在历史里的需用户决定是否清理并轮换密钥）："; sed 's/^/      /' <<<"$leaked"; }
   git -C "$P" check-ignore -q --no-index .env || bad ".gitignore 没有忽略 .env"
+  # 鸿蒙签名：仓库里的 build-profile.json5 不能带 signingConfigs 内容
+  for bp in $(git -C "$P" ls-files | grep -E '(^|/)build-profile\.json5$'); do
+    if git -C "$P" show "HEAD:$bp" 2>/dev/null | grep -qE '"(storePassword|keyPassword)"[[:space:]]*:[[:space:]]*"[^"]+"'; then
+      bad "$bp 已提交的版本含签名密码（signingConfigs 应为 []，本机签名用 skip-worktree）"
+    fi
+  done
+  if command -v gitleaks >/dev/null; then
+    gl="$(mktemp)"; gitleaks git "$P" --redact --no-banner --log-level error --report-format json --report-path "$gl" >/dev/null 2>&1 || true
+    n="$(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$gl" 2>/dev/null || echo '?')"; rm -f "$gl"
+    [[ "$n" == 0 ]] && ok "gitleaks：git 历史无命中" || tip "gitleaks：git 历史命中 $n 处，逐个确认是否误报（gitleaks git . --redact）"
+  else
+    tip "未安装 gitleaks（brew install gitleaks），无法扫 git 历史"
+  fi
   git -C "$P" check-ignore -q --no-index x.db || tip ".gitignore 没有忽略 *.db"
 fi
 

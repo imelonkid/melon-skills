@@ -137,6 +137,8 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 ### 4. 首次提交并推到 GitHub
 
+**推送前必须扫 git 历史**：先提交，再 `gitleaks git . --redact`，确认命中都是误报（测试向量、冒烟测试的假 key）再推。不要用 `gitleaks dir`，它会把被忽略的 `.env`、构建缓存也算进去，干净与否看不出来。已有项目要扫**全部历史**，不只是当前版本。
+
 ```bash
 git add -A && git status            # 逐个确认没有密钥和数据
 git commit -m "chore: 按运维规范初始化项目"
@@ -146,7 +148,13 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 
 首次上线也是 `scripts/deploy.sh minor`（得到 `v0.1.0`），由上线环节做，初始化阶段不碰服务器。
 
-已有远端但不在 GitHub：新增 GitHub 远端并推送全部分支和标签，**旧远端先保留**，告诉用户迁完再删。
+已有远端但不在 GitHub：旧远端改名（如 `gitea`）保留，GitHub 作为新的 `origin`，推送全部分支和标签；告诉用户迁完再删旧远端。
+
+**历史里有密钥时：**
+- 从没推送过的仓库：先 `git bundle create ~/.ops-backup/git/<名>-pre-filter.bundle --all` 备份，再用 `git filter-repo --replace-text` 清掉值，然后复扫。
+- 已经推送过的：**先轮换密钥**（旧值作废后，历史里的就无害了），再由用户决定要不要改写历史。
+
+**鸿蒙项目的签名配置**：DevEco 自动签名会把 storePassword / keyPassword / 证书路径写进 `build-profile.json5`。仓库里这个文件的 `signingConfigs` 必须是 `[]`。本机的签名版本先备份到 `~/.ops-backup/git/`，提交后恢复，再执行 `git update-index --skip-worktree <文件>`，并在 CLAUDE.md 写明这个约定。新电脑在 DevEco 里重新自动签名即可。
 
 ### 5. 注册（服务与静态站）
 

@@ -50,7 +50,7 @@
     <div class="pr"><h4>服务必须注册 <span class="badge b-n">§9.1</span></h4><p>不在 <code>registry/services/</code> 里的服务不允许上线。</p><div class="why">备份、探活、灾备都从注册表生成。</div></div>
     <div class="pr"><h4>版本可追溯 <span class="badge b-n">§5.1</span></h4><p>分支 <code>main</code>；发布打 <code>v*</code> 标签；镜像标签取 <code>git describe</code>。</p><div class="why">出事时知道线上跑的是哪一版。</div></div>
   </div>
-  <div class="callout info"><span class="ic">ℹ️</span><p>新仓库<b>默认私有</b>，用户明确说公开才公开。</p></div>
+  <div class="callout info"><span class="ic">ℹ️</span><p>新仓库<b>默认私有</b>，用户明确说公开才公开。鸿蒙项目：仓库里的 <code>build-profile.json5</code> 是 <code>"signingConfigs": []</code>，本机签名用 <code>git update-index --skip-worktree</code> 留在本机。</p></div>
 </section>
 
 <section id="grade" data-toc="自动定级">
@@ -76,7 +76,7 @@
     <li><h4>问清楚并定级 <span class="who ai">Claude</span></h4><p>一次问完；定级结果给用户确认。</p></li>
     <li><h4>目录与 git <span class="who ai">Claude</span></h4><p>默认 <code>~/Workspace/&lt;名&gt;</code>。已有项目 = 纳管模式：先跑 check.sh 拿差距清单，保留历史只补缺的。</p></li>
     <li><h4>生成骨架 <span class="who ai">Claude</span></h4><p>README（含上线准入清单）、CLAUDE.md；服务另加 Dockerfile、compose、<code>.env.example</code>、部署脚本、<code>/health</code>。</p></li>
-    <li><h4>首次提交并推送 <span class="who ai">Claude</span></h4><pre>gh repo create imelonkid/&lt;名&gt; --private --source . --remote origin --push</pre></li>
+    <li><h4>首次提交、扫描、推送 <span class="who ai">Claude</span></h4><p>先提交，再用 <code>gitleaks git</code> 扫 git 历史，命中都确认是误报才推送。历史里有密钥：没推过的先备份再 <code>filter-repo</code> 清理；推过的先轮换密钥。</p><pre>gh repo create imelonkid/&lt;名&gt; --private --source . --remote origin --push</pre></li>
     <li><h4>注册 <span class="who ai">Claude</span></h4><p>在 ops 仓库写 <code>registry/services/&lt;名&gt;.yaml</code>，状态 building；做不到的写 <code>known_gaps</code>，纳管项目的大缺口同时进路线图差距表。推不推送问用户。</p></li>
     <li><h4>检查 <span class="who ai">Claude</span></h4><p><code>scripts/check.sh</code>：✗ 必须修，△ 写进 README「上线准入」。</p></li>
     <li><h4>交付 <span class="who me">用户</span></h4><p>1Password 条目、服务器目录、ICP / DNS / 证书——见「交给用户的事」。</p></li>
@@ -163,7 +163,7 @@
   <div class="tbl"><table>
     <thead><tr><th>类别</th><th>检查项</th></tr></thead>
     <tbody>
-      <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code> 和 <code>data/</code></td></tr>
+      <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code>；鸿蒙 <code>build-profile.json5</code> 不含签名密码；gitleaks 扫 git 历史</td></tr>
       <tr><td>文件</td><td>README、CLAUDE.md；服务另查 <code>.env.example</code>（含 OTel）、Dockerfile 烘入 <code>APP_VERSION</code>、<code>/health</code></td></tr>
       <tr><td>发布</td><td>deploy.sh <b>按 tag 发布</b>（从 tag 构建）、支持 <code>rollback</code>、有发布窗口、健康检查失败自动回滚</td></tr>
       <tr><td>compose</td><td><code>mem_limit</code> / <code>healthcheck</code> / <code>restart</code>；端口只绑本机；<code>env_file</code>；数据挂载；没有 <code>logging:</code>；第三方镜像钉版本；没用厂商专有存储 SDK</td></tr>
