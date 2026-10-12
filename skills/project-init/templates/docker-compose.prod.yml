@@ -1,0 +1,25 @@
+# 线上：/opt/__NAME__/docker-compose.prod.yml —— 由 scripts/deploy.sh 同步，服务器上不要手改
+#   data/  持久化数据（唯一的数据目录）
+#   .env   真实配置，来自 1Password「ops/__NAME__/prod」，不进 git
+# 对外：https://__DOMAIN__ → 反向代理 → 127.0.0.1:__PORT__
+name: __NAME__
+
+services:
+  app:
+    image: __NAME__:prod                 # deploy.sh 每次把新版本打成 :prod，上一版留作 :rollback
+    container_name: __NAME__
+    env_file: .env                       # 不用 --env-file 插值：它不进容器标签，灾备重建会漏
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:__PORT__:__PORT__"    # 只绑本机，对外走反向代理
+    volumes:
+      - ./data:/data
+    mem_limit: 512m                      # 必填；按实测峰值 × 1.5 调整
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:__PORT__/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped

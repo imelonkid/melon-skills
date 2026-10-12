@@ -1,0 +1,42 @@
+# 字段说明见 _schema.yaml；做不到的条款写进 known_gaps，不要空着假装满足
+name: __NAME__
+status: building
+tier: __TIER__
+dr_level: __DR__                         # T0 有状态 → L2；T1 → L1；无状态 → L3
+site: __SITE__
+failover_site: __FAILOVER__              # 按 sites.yaml 的 standby_pairs
+witness_site: __WITNESS__
+
+code:
+  repo: git@github.com:imelonkid/__NAME__.git
+  path: .
+
+deploy:
+  dir: /opt/__NAME__
+  compose: deploy/docker-compose.prod.yml
+  build: scripts/deploy.sh               # 本机构建 → docker save | ssh docker load
+  up: cd /opt/__NAME__ && docker compose -f docker-compose.prod.yml up -d
+  env_example: .env.example
+  secrets: ops/__NAME__/prod
+
+endpoints:
+  - name: __NAME__
+    url: http://127.0.0.1:__PORT__/health
+    public: __DOMAIN__
+
+resources:
+  mem_limit: 512m
+
+assets:
+  - id: __NAME__-db
+    tier: __TIER__
+    kind: sqlite
+    location: data/__NAME__.db
+    interval: 6h
+
+  - id: __NAME__-secrets
+    tier: S
+    kind: file
+    location: .env
+
+known_gaps: []
