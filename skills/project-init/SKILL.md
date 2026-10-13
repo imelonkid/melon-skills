@@ -88,7 +88,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | `deploy/docker-compose.yml` | 按需 | 本地开发 |
 | `.env.example` | `templates/env.example` | 全部变量 + 注释，值留空或示例 |
 | `scripts/deploy.sh` | `templates/deploy.sh` | 见「发布」|
-| `.github/workflows/ci.yml` | `templates/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
+| `.github/workflows/ci.yml` | `templates/workflows/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
 | `scripts/ci-test.sh` | `templates/ci-test.sh` | CI 的测试入口：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
 | `GET /health` | 代码 | 200 = 能正常服务；顺带检查数据库连接；返回体带 `version`（读 `APP_VERSION`）|
 
@@ -179,6 +179,20 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 - 已经推送过的：**先轮换密钥**（旧值作废后，历史里的就无害了），再由用户决定要不要改写历史。
 
 **鸿蒙项目的签名配置**：DevEco 自动签名会把 storePassword / keyPassword / 证书路径写进 `build-profile.json5`。仓库里这个文件的 `signingConfigs` 必须是 `[]`。本机的签名版本先备份到 `~/.ops-backup/git/`，提交后恢复，再执行 `git update-index --skip-worktree <文件>`，并在 CLAUDE.md 写明这个约定。新电脑在 DevEco 里重新自动签名即可。
+
+### 4b. 接入发布流水线（服务）
+
+发布与回滚在 GitHub 上点（手机也行），流水线本体在公开仓库 `imelonkid/melon-ci`，项目只放三个表单：
+`templates/workflows/{release,rollback,status}.yml` → `.github/workflows/`（`__NAME__` 换成服务名，多端项目 `tag-prefix: server-v`）。
+
+一次性设置（需要 GitHub Pro：私有仓库的分支保护与 Environments）：
+
+1. **分支保护（main）**：必须走 PR；`check / 密钥扫描`、`check / 运维规范`、`check / 测试`、`check / 镜像构建` 全绿才能合并；管理员也受约束；只允许 squash。
+2. **production 环境**：只允许 main 分支；环境变量 `DEPLOY_HOST`（`deploy@<IP>`）、`DEPLOY_KNOWN_HOSTS`（`ssh-keyscan -t ed25519 <IP>`）。
+3. **CI 部署钥匙**：本机生成 ed25519 → 私钥 `gh secret set DEPLOY_SSH_KEY --env production < 私钥` 后立即删除本地文件（不显示、不进对话）→ 公钥存为运维仓库 `agent/authorized/ci-<服务>.pub`（入口自动限定 `--only <服务>`）→ `agent/install.sh <主机>`。
+4. 主机上登记服务：`agent/services/<主机>/<服务>.conf` → `agent/install.sh <主机>`（会生成只读部署密钥并登记到仓库）。
+
+注意：用 `GITHUB_TOKEN` 推的 tag 不会触发其他流水线，所以发布是「门禁 → 打 tag → 构建 → 部署」在同一条流水线里接力；表单要显式授予权限（`contents: write, checks: read, deployments: write`），可复用流水线不能自己提权。
 
 ### 5. 注册（服务与静态站）
 

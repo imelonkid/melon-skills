@@ -95,7 +95,8 @@
       <tr><td><code>deploy/Dockerfile</code></td><td>按技术栈写，多阶段构建，基础镜像钉版本</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>.env.example</code></td><td><code>templates/env.example</code>，含 OTel 配置</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>scripts/deploy.sh</code></td><td><code>templates/deploy.sh</code></td><td><span class="badge b-ok">服务</span></td></tr>
-      <tr><td><code>.github/workflows/ci.yml</code> · <code>scripts/ci-test.sh</code></td><td><code>templates/ci.yml</code> · <code>templates/ci-test.sh</code>：PR 检查（melon-ci）</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>.github/workflows/ci.yml</code> · <code>scripts/ci-test.sh</code></td><td><code>templates/workflows/ci.yml</code> · <code>templates/ci-test.sh</code>：PR 检查（melon-ci）</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>.github/workflows/{release,rollback,status}.yml</code></td><td><code>templates/workflows/</code>：在 GitHub（手机）上发布、回滚、看线上状态；需 production 环境与分支保护</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>$OPS_REPO/registry/services/&lt;名&gt;.yaml</code></td><td><code>templates/service.yaml</code></td><td><span class="badge b-ok">服务</span> <span class="badge b-ok">静态站</span></td></tr>
     </tbody>
   </table></div>

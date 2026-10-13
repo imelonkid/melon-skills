@@ -1,0 +1,26 @@
+# 发布服务端（开发发布平台 P4.3）：Actions → 「发布服务端」→ Run workflow，选 patch / minor / major。
+# 门禁：08–23 点（emergency 例外，24 小时内补复盘）、main 最新提交的 CI 必须是绿的。
+# 打 tag server-vX.Y.Z → 从 tag 构建 → 经主机部署入口上传并部署 → 健康检查不过自动切回 → 记录到 Deployments。
+name: 发布服务端
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 版本号怎么升（也可以填已有 tag，如 server-v0.1.2，表示重新部署 / 回到它）
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      emergency:
+        description: 紧急变更（允许 08–23 点之外发布，24 小时内补复盘）
+        type: boolean
+        default: false
+jobs:
+  release:
+    permissions: { contents: write, checks: read, deployments: write }   # 打 tag、查 CI、写部署记录
+    uses: imelonkid/melon-ci/.github/workflows/server-release.yml@v1
+    with:
+      service: __NAME__
+      tag-prefix: server-v
+      bump: ${{ inputs.bump }}
+      emergency: ${{ inputs.emergency }}
+    secrets: inherit
