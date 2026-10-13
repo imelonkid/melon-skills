@@ -43,7 +43,7 @@ push_tag() {
   [[ "${NEW:-0}" == 1 ]] || return 0
   git tag -a "$TAG" -m "release $TAG"
   git push -q origin "$TAG"
-  echo "▸ 新版本 $TAG（上一版 ${PREV:-无}），tag 已推到 GitHub"
+  echo "▸ 新版本 ${TAG}（上一版 ${PREV:-无}），tag 已推到 GitHub"
 }
 
 # checkout_tag <目录>：把 tag 的内容解包到目录

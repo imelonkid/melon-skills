@@ -18,7 +18,7 @@ cd "$(git rev-parse --show-toplevel)"
 source scripts/lib-release.sh
 
 D=/Applications/DevEco-Studio.app/Contents
-[[ -d "$D" ]] || die "没找到 DevEco Studio（$D）"
+[[ -d "$D" ]] || die "没找到 DevEco Studio（${D}）"
 SIGNING="${HARMONY_SIGNING:-apps/harmony/build-profile.json5}"
 
 if [[ "${DRY_RUN:-}" == 1 ]]; then
@@ -26,7 +26,7 @@ if [[ "${DRY_RUN:-}" == 1 ]]; then
   IFS=. read -r ma mi pa <<<"$VER"; VER="$ma.$mi.$((pa+1))"; TAG="harmony-v$VER-dry"; NEW=0
   SRC="$(mktemp -d)"; trap 'rm -rf "$SRC"' EXIT
   git ls-files -co --exclude-standard -z | xargs -0 tar -cf - | tar -xf - -C "$SRC"
-  echo "▸ 演练：从当前工作区构建 $VER（不打 tag、不建 Release）"
+  echo "▸ 演练：从当前工作区构建 ${VER}（不打 tag、不建 Release）"
 else
   resolve_tag harmony-v "${1:-}"
   push_tag
@@ -74,7 +74,7 @@ case "$KIND" in
   release) echo "▸ 发布证书签名" ;;
 esac
 
-echo "▸ 构建 __PRODUCT__ 鸿蒙 $VER（versionCode $CODE）"
+echo "▸ 构建 __PRODUCT__ 鸿蒙 ${VER}（versionCode ${CODE}）"
 export DEVECO_SDK_HOME=$D/sdk NODE_HOME=$D/tools/node PATH="$D/tools/node/bin:$D/tools/ohpm/bin:$PATH"
 ( cd "$H" && ohpm install --all >/dev/null \
   && node $D/tools/hvigor/bin/hvigorw.js assembleApp --mode project -p product=default -p buildMode=release --no-daemon 2>&1 \

@@ -20,7 +20,7 @@
 #   - 镜像取自 tag 的内容（git archive）构建，与本地工作区无关；镜像名 <名>:<tag>，版本号经 build-arg 烘进 APP_VERSION
 #   - 一个仓库多个端时各端独立 tag：服务端 TAG_PREFIX=server-v，客户端有自己的发布脚本
 #   - 构建上下文需要额外内容（比如兄弟仓库按固定版本放进来）时，写 deploy/prepare-context.sh：
-#     它在 tag 的内容解包后被 source，可读 $SRC、$TAG，可改 $CTX（构建上下文）和 $DOCKERFILE
+#     它在 tag 的内容解包后被 source，可读 ${SRC}、${TAG}，可改 ${CTX}（构建上下文）和 $DOCKERFILE
 set -euo pipefail
 
 NAME=__NAME__                            # 与部署入口里登记的服务名、镜像名一致
@@ -35,7 +35,7 @@ WHO="as=$(whoami | tr -cd 'A-Za-z0-9._@-')"
 ARG="${1:-}"
 [[ -n "$ARG" ]] || { sed -n '3,10p' "$0"; exit 1; }
 # 先确认连得上部署入口：连不上时别把「查不到」当成「没有」去白白构建
-agent version >/dev/null 2>&1 || die "连不上部署入口 $HOST（1Password 解锁并授权了吗？可先执行 ssh $HOST version）"
+agent version >/dev/null 2>&1 || die "连不上部署入口 ${HOST}（1Password 解锁并授权了吗？可先执行 ssh $HOST version）"
 
 case "$ARG" in
   status)   agent status "$NAME"; exit ;;
@@ -63,7 +63,7 @@ case "$ARG" in
     esac
     git tag -a "$TAG" -m "release $TAG"
     git push -q origin "$TAG"
-    echo "▸ 新版本 $TAG（上一版 $last），tag 已推到 GitHub"
+    echo "▸ 新版本 ${TAG}（上一版 ${last}），tag 已推到 GitHub"
     ;;
   "$TAG_PREFIX"[0-9]*)
     git rev-parse -q --verify "refs/tags/$ARG" >/dev/null || die "tag $ARG 不存在（git tag -l 查看）"
@@ -74,7 +74,7 @@ esac
 
 # —— 镜像：服务器上已有就不重建（回滚、重新部署秒级）；否则从 tag 的内容构建并上传 ——
 if agent has "$NAME" "$TAG"; then
-  echo "▸ 服务器已有镜像 $NAME:$TAG，跳过构建"
+  echo "▸ 服务器已有镜像 $NAME:${TAG}，跳过构建"
 else
   echo "▸ 从 tag $TAG 构建 linux/amd64"
   SRC="$(mktemp -d)"; trap 'rm -rf "$SRC"' EXIT
