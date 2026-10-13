@@ -104,7 +104,7 @@ else
     grep -qE 'git archive' "$D" && grep -qE 'refs/tags|git tag' "$D" && ok "deploy.sh 按 tag 发布（从 tag 内容构建）" || bad "deploy.sh 不是按 tag 发布：每次发版必须打新 tag，从 tag 构建（模板 templates/deploy.sh）"
     grep -qE '^\s*rollback\)' "$D" && ok "deploy.sh 支持按 tag 回滚" || bad "deploy.sh 没有 rollback（回滚到上一个 tag）"
     grep -q EMERGENCY "$D" && ok "deploy.sh 有发布窗口" || tip "deploy.sh 没有 08–23 点发布窗口（§9.3）"
-    grep -qE 'auto-rollback' "$D" && ok "deploy.sh 健康检查失败自动回滚" || tip "deploy.sh 没有健康检查失败自动回滚（§9.3）"
+    grep -qE 'auto-rollback|agent deploy' "$D" && ok "deploy.sh 健康检查失败自动回滚（部署入口 deploy-agent）" || tip "deploy.sh 没有健康检查失败自动回滚（§9.3）"
   fi
 
   # 多端项目（apps/ 下有客户端）：各端独立 tag、客户端有发布脚本、服务端声明最低客户端版本
