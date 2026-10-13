@@ -189,6 +189,7 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 
 1. **分支保护（main）**：必须走 PR；`check / 密钥扫描`、`check / 运维规范`、`check / 测试`、`check / 镜像构建` 全绿才能合并；管理员也受约束；只允许 squash。
 2. **production 环境**：只允许 main 分支；环境变量 `DEPLOY_HOST`（`deploy@<IP>`）、`DEPLOY_KNOWN_HOSTS`（`ssh-keyscan -t ed25519 <IP>`）。
+   镜像仓库：环境变量 `ACR_REGISTRY`（实例专属域名）、`ACR_USERNAME`，环境 Secret `ACR_PASSWORD`（用户本人 `gh secret set … --env production` 写入）；ACR 里建好 `<命名空间>/<服务>` 私有仓库；主机上 deploy 用户 `docker login` 一次；服务 conf 写 `REGISTRY=<域名>/<命名空间>`。不配镜像仓库也能发，但从 GitHub（海外）经 SSH 传镜像到国内很慢。
 3. **CI 部署钥匙**：本机生成 ed25519 → 私钥 `gh secret set DEPLOY_SSH_KEY --env production < 私钥` 后立即删除本地文件（不显示、不进对话）→ 公钥存为运维仓库 `agent/authorized/ci-<服务>.pub`（入口自动限定 `--only <服务>`）→ `agent/install.sh <主机>`。
 4. 主机上登记服务：`agent/services/<主机>/<服务>.conf` → `agent/install.sh <主机>`（会生成只读部署密钥并登记到仓库）。
 
