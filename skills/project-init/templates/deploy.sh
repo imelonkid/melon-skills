@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 发布与回滚：一律以 git tag 为单位。线上版本 = 某个 tag，没有 tag 的代码不上线。
 #
-#   scripts/deploy.sh patch|minor|major   # 发新版：在 HEAD 打下一个 vX.Y.Z，推到 GitHub，构建并上线
+#   scripts/deploy.sh patch|minor|major   # 发新版：在 HEAD 打下一个 <前缀>X.Y.Z，推到 GitHub，构建并上线
 #   scripts/deploy.sh v1.4.0              # 上线指定的已有 tag（比线上旧 = 回滚，相同 = 重新部署）
 #   scripts/deploy.sh rollback            # 回滚到上一个成功上线的 tag
 #   scripts/deploy.sh status              # 线上版本与最近的部署事件
@@ -17,11 +17,15 @@
 #   - 健康检查 60 秒不过，自动切回上线前的版本（镜像和 compose 一起切）
 #   - 每次部署往 deploy.log 追加一行事件；当前版本写在 RELEASE
 #   - 回滚不受发布窗口限制
+#   - 一个仓库多个端（服务端 + 客户端）时，各端独立 tag：服务端 TAG_PREFIX=server-v，客户端另有自己的发布脚本
+#   - 构建上下文需要额外内容（比如兄弟仓库按固定版本放进来）时，写 deploy/prepare-context.sh：
+#     它在 tag 的内容解包后被 source，可读 $SRC、$TAG，可改 $CTX（构建上下文）和 $DOCKERFILE
 #
 # 服务器上只需事先准备好 /opt/__NAME__/ 和其中的 .env（来自 1Password ops/__NAME__/prod）。
 set -euo pipefail
 
 NAME=__NAME__
+TAG_PREFIX=v                             # 单端项目 v；多端单仓库用 <端>-v，如 server-v
 HOST="${DEPLOY_HOST:-__HOST__}"          # ~/.ssh/config 里的主机别名
 DIR="/opt/$NAME"
 HEALTH="http://127.0.0.1:__PORT__/health"
@@ -56,12 +60,12 @@ case "$ARG" in
     [[ -z "$(git status --porcelain)" ]] || die "工作区有未提交的改动"
     [[ "$(git symbolic-ref --short HEAD)" == main ]] || die "只从 main 发版"
     git merge-base --is-ancestor HEAD origin/main || die "HEAD 还没推到 origin/main，先 git push"
-    last="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"; last="${last:-v0.0.0}"
-    IFS=. read -r ma mi pa <<<"${last#v}"
+    last="$(git tag -l "${TAG_PREFIX}[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -1)"; last="${last:-${TAG_PREFIX}0.0.0}"
+    IFS=. read -r ma mi pa <<<"${last#"$TAG_PREFIX"}"
     case "$ARG" in
-      major) TAG="v$((ma+1)).0.0" ;;
-      minor) TAG="v$ma.$((mi+1)).0" ;;
-      patch) TAG="v$ma.$mi.$((pa+1))" ;;
+      major) TAG="${TAG_PREFIX}$((ma+1)).0.0" ;;
+      minor) TAG="${TAG_PREFIX}$ma.$((mi+1)).0" ;;
+      patch) TAG="${TAG_PREFIX}$ma.$mi.$((pa+1))" ;;
     esac
     git tag -a "$TAG" -m "release $TAG"
     git push -q origin "$TAG"
@@ -73,7 +77,7 @@ case "$ARG" in
     [[ -n "$TAG" ]] || die "deploy.log 里找不到可回滚的上一版"
     echo "▸ 回滚：${CURRENT:-未知} → $TAG"
     ;;
-  v*)
+  "$TAG_PREFIX"[0-9]*)
     git rev-parse -q --verify "refs/tags/$ARG" >/dev/null || die "tag $ARG 不存在（git tag -l 查看）"
     TAG="$ARG"
     if [[ "$TAG" == "$CURRENT" ]]; then KIND=redeploy
@@ -90,8 +94,10 @@ else
   echo "▸ 从 tag $TAG 构建 linux/amd64"
   SRC="$(mktemp -d)"; trap 'rm -rf "$SRC"' EXIT
   git archive "$TAG" | tar -x -C "$SRC"
-  docker buildx build --platform linux/amd64 -f "$SRC/deploy/Dockerfile" \
-    --build-arg APP_VERSION="$TAG" -t "$NAME:$TAG" --load "$SRC"
+  CTX="$SRC"; DOCKERFILE="$SRC/deploy/Dockerfile"
+  if [[ -f "$SRC/deploy/prepare-context.sh" ]]; then source "$SRC/deploy/prepare-context.sh"; fi
+  docker buildx build --platform linux/amd64 -f "$DOCKERFILE" \
+    --build-arg APP_VERSION="$TAG" -t "$NAME:$TAG" --load "$CTX"
   echo "▸ 传输镜像"
   docker save "$NAME:$TAG" | gzip | remote 'gunzip | docker load' >/dev/null
 fi
@@ -99,7 +105,7 @@ remote "mkdir -p $DIR/releases"
 git show "$TAG:deploy/$COMPOSE" | remote "cat > $DIR/releases/$TAG.yml"
 
 echo "▸ 上线 $TAG（$KIND）"
-remote NAME="$NAME" TAG="$TAG" DIR="$DIR" HEALTH="$HEALTH" COMPOSE="$COMPOSE" KIND="$KIND" WHO="$(whoami)" KEEP="$KEEP" bash -s <<'REMOTE'
+remote NAME="$NAME" TAG="$TAG" TAG_PREFIX="$TAG_PREFIX" DIR="$DIR" HEALTH="$HEALTH" COMPOSE="$COMPOSE" KIND="$KIND" WHO="$(whoami)" KEEP="$KEEP" bash -s <<'REMOTE'
 set -euo pipefail
 cd "$DIR"
 event()   { printf '%s\t%s\t%s\t%s\t%s\n' "$(date '+%F %T')" "$1" "$KIND" "$WHO" "$2" >> deploy.log; }
@@ -112,7 +118,7 @@ switch "$TAG"
 if healthy; then
   echo "$TAG" > RELEASE; event "$TAG" ok; echo "✓ $TAG 已上线且健康"
   # 只保留最近 KEEP 个版本（当前版本永远保留）
-  for old in $(docker images "$NAME" --format '{{.Tag}}' | grep -E '^v[0-9]' | sort -rV | tail -n +$((KEEP+1))); do
+  for old in $(docker images "$NAME" --format '{{.Tag}}' | grep -E "^${TAG_PREFIX}[0-9]" | sort -rV | tail -n +$((KEEP+1))); do
     [[ "$old" == "$TAG" ]] && continue
     docker rmi "$NAME:$old" >/dev/null 2>&1 || true; rm -f "releases/$old.yml"
   done

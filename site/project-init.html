@@ -157,6 +157,29 @@
   </table></div>
 </section>
 
+<section id="multi" data-toc="多端项目">
+  <h2>多端项目：一个仓库，各端独立发布</h2>
+  <p class="intro">样板是 jolly：服务端、网页界面、Mac 桌面端、鸿蒙 App 在同一个仓库。模板在 <code>templates/multi-end/</code>。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>端</th><th>tag</th><th>产物与渠道</th><th>回滚</th></tr></thead>
+    <tbody>
+      <tr><td>服务端</td><td><code>server-v*</code></td><td>镜像，<code>scripts/deploy.sh</code></td><td><span class="badge b-ok">秒级</span> <code>deploy.sh rollback</code></td></tr>
+      <tr><td>网页界面</td><td>随服务端</td><td>服务端在 <code>/app/</code> 提供，与服务端同版本</td><td><span class="badge b-ok">随服务端</span></td></tr>
+      <tr><td>桌面（Electron）</td><td><code>desktop-v*</code></td><td>dmg → 下载站 <code>/download/desktop/</code>；客户端检查新版本提示下载</td><td><span class="badge b-warn">只能前进</span> 修复后发 patch</td></tr>
+      <tr><td>鸿蒙</td><td><code>harmony-v*</code></td><td>版本号与签名构建时注入 → GitHub Release → AGC</td><td><span class="badge b-bad">不能回滚</span> 发更高版本</td></tr>
+    </tbody>
+  </table></div>
+  <h3>四条约定</h3>
+  <div class="principles">
+    <div class="pr"><h4>网页界面放服务端</h4><p>桌面端只是打开 <code>&lt;服务端&gt;/app/</code> 的壳，失败时退回安装包自带的界面；主窗口只允许本地文件和当前服务端。</p><div class="why">改界面只发服务端，秒级回滚。</div></div>
+    <div class="pr"><h4>兼容契约</h4><p><code>/api/health</code> 返回 <code>version</code>、<code>apiVersion</code>、<code>minClient</code>。服务端至少兼容上一个 API 版本，新版客户端发布后才提高 <code>minClient</code>。</p><div class="why">客户端发出去收不回来。</div></div>
+    <div class="pr"><h4>版本号构建时注入</h4><p>服务端 build-arg <code>APP_VERSION</code>；Electron <code>extraMetadata.version</code>；鸿蒙改解包副本的 <code>app.json5</code>。</p><div class="why">tag 即版本，不用为改版本号单独提交。</div></div>
+    <div class="pr"><h4>兄弟仓库按 tag 固定</h4><p><code>deploy/prepare-context.sh</code> 把依赖仓库按 <code>deploy/&lt;依赖&gt;.ref</code> 的 tag 拉进构建上下文。</p><div class="why">从任何一台电脑、CI 都能重现同一个镜像。</div></div>
+  </div>
+  <h3>鸿蒙签名分档</h3>
+  <div class="flow"><span class="s">调试证书 + 登记设备<br><small>开发者自测，hdc 安装</small></span><span class="a">→</span><span class="s">发布证书 + AGC 邀请测试<br><small>灰度，不需要软著</small></span><span class="a">→</span><span class="s">正式上架<br><small>软著、App 备案</small></span></div>
+</section>
+
 <section id="check" data-toc="检查脚本">
   <h2>检查脚本</h2>
   <pre>~/.claude/skills/project-init/scripts/check.sh &lt;项目目录&gt;</pre>
@@ -166,6 +189,7 @@
       <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code>；鸿蒙 <code>build-profile.json5</code> 不含签名密码；gitleaks 扫 git 历史</td></tr>
       <tr><td>文件</td><td>README、CLAUDE.md；服务另查 <code>.env.example</code>（含 OTel）、Dockerfile 烘入 <code>APP_VERSION</code>、<code>/health</code></td></tr>
       <tr><td>发布</td><td>deploy.sh <b>按 tag 发布</b>（从 tag 构建）、支持 <code>rollback</code>、有发布窗口、健康检查失败自动回滚</td></tr>
+      <tr><td>多端</td><td>有 <code>apps/desktop</code> 等客户端时：服务端 tag 前缀 <code>server-v</code>、各端有 <code>scripts/release-&lt;端&gt;.sh</code>、服务端返回 <code>minClient</code></td></tr>
       <tr><td>compose</td><td><code>mem_limit</code> / <code>healthcheck</code> / <code>restart</code>；端口只绑本机；<code>env_file</code>；数据挂载；没有 <code>logging:</code>；第三方镜像钉版本；没用厂商专有存储 SDK</td></tr>
       <tr><td>注册表</td><td>已登记；必填字段齐全；<code>code.repo</code> 是 GitHub；没有 TODO / 占位符；L2 的主·备·裁判与 <code>standby_pairs</code> 一致，裁判是第三站点</td></tr>
     </tbody>

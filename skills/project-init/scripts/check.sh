@@ -107,6 +107,18 @@ else
     grep -qE 'auto-rollback' "$D" && ok "deploy.sh 健康检查失败自动回滚" || tip "deploy.sh 没有健康检查失败自动回滚（§9.3）"
   fi
 
+  # 多端项目（apps/ 下有客户端）：各端独立 tag、客户端有发布脚本、服务端声明最低客户端版本
+  ends=(); for e in desktop harmony ios android; do [[ -d "$P/apps/$e" ]] && ends+=("$e"); done
+  if (( ${#ends[@]} )); then
+    echo "▸ 多端（${ends[*]}）"
+    grep -qE '^TAG_PREFIX=server-v' "$P/scripts/deploy.sh" 2>/dev/null && ok "服务端 tag 前缀 server-v" || tip "多端项目的服务端应使用 TAG_PREFIX=server-v（各端独立 tag）"
+    for e in "${ends[@]}"; do
+      [[ -x "$P/scripts/release-$e.sh" ]] && ok "scripts/release-$e.sh" || tip "缺 scripts/release-$e.sh（模板 templates/multi-end/）"
+    done
+    grep -rqs 'minClient' "$P/apps/server" --include='*.js' --include='*.ts' --include='*.py' --include='*.go' --exclude-dir=node_modules \
+      && ok "服务端返回 minClient（客户端最低版本）" || tip "服务端 /api/health 没有 minClient（客户端兼容契约）"
+  fi
+
   echo "▸ 注册"
   if [[ ! -d "$OPS/registry/services" ]]; then
     tip "找不到 ops 仓库（$OPS），无法核对注册"

@@ -135,6 +135,28 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - 数据库迁移必须**向后兼容**（先扩展、再收缩），保证回滚到上一个 tag 仍能跑。
 - **不要**在服务器上手动改镜像标签、compose 或 `docker run`——一切经 `deploy.sh`，否则 `RELEASE` 和 `deploy.log` 就不可信了。
 
+#### 多端项目（服务端 + 网页 + 桌面 + 手机，一个仓库）
+
+样板项目：jolly（`apps/server`、`apps/web`、`apps/desktop`、`apps/harmony`）。模板在 `templates/multi-end/`。
+
+| 端 | tag | 产物与渠道 | 回滚 |
+|---|---|---|---|
+| 服务端 | `server-vX.Y.Z` | 镜像，`scripts/deploy.sh`（模板 `deploy.sh`，`TAG_PREFIX=server-v`） | `deploy.sh rollback`，秒级 |
+| 网页界面 | 随服务端 | 服务端在 `/app/` 提供，**界面与服务端同版本** | 跟着服务端回滚 |
+| 桌面（Electron） | `desktop-vX.Y.Z` | `scripts/release-desktop.sh`：从 tag 构建 dmg → 下载站 `/download/desktop/`（`latest.json` 最后上传）→ GitHub Release 存档 | 装出去收不回来：修复后发 patch |
+| 鸿蒙 | `harmony-vX.Y.Z` | `scripts/release-harmony.sh`：版本号与签名**构建时注入**（不改源码）→ GitHub Release → AGC | 应用市场不能回滚，只能发更高版本 |
+
+规则：
+
+- **各端独立 tag**，节奏互不绑架；端与端之间靠 API 版本对齐。
+- **网页界面放服务端**：改界面只发服务端、秒级回滚；桌面端只是打开 `<服务端>/app/` 的壳，加载失败时退回安装包自带的那份界面；主窗口只允许本地文件和当前服务端两个来源。
+- **兼容契约**：`/api/health` 返回 `version`（= tag）、`apiVersion`、`minClient`（各端最低版本，示例 `templates/multi-end/compat.example.js`）。服务端至少兼容上一个 API 版本；只有新版客户端已发布后才提高 `minClient`。
+- **桌面更新**：客户端启动 10 秒后、之后每 6 小时读 `<服务端>/download/desktop/latest.json` 和 `minClient`，有新版弹窗提示下载；低于 `minClient` 必须升级。没有 Apple 开发者签名时做不了静默自动更新（electron-updater 在 macOS 要求签名），写进 `known_gaps`。
+- **鸿蒙签名分档**：调试证书 + 登记设备（开发者自测，hdc 安装）→ 发布证书 + AGC 邀请测试（灰度，不需要软著）→ 正式上架（软著、App 备案）。发布证书本身不要求软著，灰度阶段就可以申请。
+- **构建要带兄弟仓库**（如引擎）：写 `deploy/prepare-context.sh`（模板 `templates/multi-end/prepare-context.sh`），兄弟仓库版本固定在 `deploy/<依赖>.ref`（它的 tag），不用 `link:` 相对路径直接构建。
+- **版本号一律构建时注入**：服务端 build-arg `APP_VERSION`；Electron `-c.extraMetadata.version`；鸿蒙改解包副本里的 `app.json5`（versionCode = (X+1)·1000000 + Y·1000 + Z，只增不减）。
+- **客户端发布脚本共用** `templates/multi-end/lib-release.sh`：tag 规则、发布窗口、版本说明、GitHub Release 存档。
+
 ### 4. 首次提交并推到 GitHub
 
 **推送前必须扫 git 历史**：先提交，再 `gitleaks git . --redact`，确认命中都是误报（测试向量、冒烟测试的假 key）再推。不要用 `gitleaks dir`，它会把被忽略的 `.env`、构建缓存也算进去，干净与否看不出来。已有项目要扫**全部历史**，不只是当前版本。
