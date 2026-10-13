@@ -88,6 +88,8 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | `deploy/docker-compose.yml` | 按需 | 本地开发 |
 | `.env.example` | `templates/env.example` | 全部变量 + 注释，值留空或示例 |
 | `scripts/deploy.sh` | `templates/deploy.sh` | 见「发布」|
+| `.github/workflows/ci.yml` | `templates/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
+| `scripts/ci-test.sh` | `templates/ci-test.sh` | CI 的测试入口：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
 | `GET /health` | 代码 | 200 = 能正常服务；顺带检查数据库连接；返回体带 `version`（读 `APP_VERSION`）|
 
 **静态站**：同样按 tag 发布——从 tag 的内容构建，上线后在服务器记 `RELEASE` 与 `deploy.log`；构建产物不进 git；部署只同步构建目录，**不要对干净 checkout 用 `rsync --delete`**（线上可能有不在 git 里的内容，比如由 Obsidian 同步的文章，这种情况写进 `known_gaps`）。

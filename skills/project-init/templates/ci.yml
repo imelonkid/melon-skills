@@ -1,0 +1,9 @@
+# PR 检查（开发发布平台 P4.1）：密钥扫描、运维规范、服务端冒烟、镜像构建。流水线本体在 imelonkid/melon-ci。
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  check:
+    uses: imelonkid/melon-ci/.github/workflows/pr-check.yml@v1
