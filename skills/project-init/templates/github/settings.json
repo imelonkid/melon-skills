@@ -10,14 +10,35 @@
     "branch": "main",
     "required_status_checks": {
       "strict": false,
-      "contexts": ["check / 密钥扫描", "check / 运维规范", "check / 测试", "check / 镜像构建"]
+      "contexts": [
+        "check / 密钥扫描",
+        "check / 运维规范",
+        "check / 测试",
+        "check / 镜像构建"
+      ]
     },
     "enforce_admins": true,
-    "required_pull_request_reviews": { "required_approving_review_count": 0 },
+    "required_pull_request_reviews": {
+      "required_approving_review_count": 0
+    },
     "required_linear_history": true,
     "restrictions": null
   },
   "environments": {
-    "production": { "branches": ["main"] }
+    "production": {
+      "branches": [
+        "main"
+      ],
+      "variables": [
+        "DEPLOY_HOST",
+        "DEPLOY_KNOWN_HOSTS",
+        "ACR_REGISTRY",
+        "ACR_USERNAME"
+      ],
+      "secrets": [
+        "DEPLOY_SSH_KEY",
+        "ACR_PASSWORD"
+      ]
+    }
   }
 }

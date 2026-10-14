@@ -17,7 +17,7 @@ on:
 jobs:
   rollback:
     permissions: { contents: read, deployments: write }
-    uses: imelonkid/melon-ci/.github/workflows/server-rollback.yml@v1
+    uses: imelonkid/melon-ci/.github/workflows/server-rollback.yml@v2
     with:
       service: __NAME__
       tag: ${{ inputs.tag }}

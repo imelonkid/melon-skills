@@ -4,7 +4,7 @@
 #   scripts/github-apply.sh imelonkid/<名>           应用（幂等）
 #   scripts/github-apply.sh imelonkid/<名> --check   只检查与基线是否一致，不改
 #
-# 不碰 secrets 与环境变量（DEPLOY_SSH_KEY、DEPLOY_HOST …）：那些按 SKILL.md「4b」由各自的流程写入。
+# 不写 secrets 与环境变量的值（DEPLOY_SSH_KEY、ACR_PASSWORD …）：那些按 SKILL.md「4b」由各自的流程写入；--check 只核对名字齐不齐。
 set -euo pipefail
 R="${1:?用法：github-apply.sh <owner/repo> [--check]}"; MODE="${2:-apply}"
 S="$(cd "$(dirname "$0")/../templates/github" && pwd)/settings.json"
@@ -48,6 +48,11 @@ for env, spec in s["environments"].items():
     pol = gh(f"repos/{r}/environments/{env}/deployment-branch-policies") or {}
     names = {x["name"] for x in pol.get("branch_policies", [])}
     chk(set(spec["branches"]) == names, f"{env} 环境只允许 {', '.join(spec['branches'])}（实际 {', '.join(sorted(names)) or '未设置'}）")
+    for kind in ("variables", "secrets"):
+        want = set(spec.get(kind, []))
+        have = {x["name"] for x in (gh(f"repos/{r}/environments/{env}/{kind}?per_page=100") or {}).get(kind, [])}
+        miss = sorted(want - have)
+        chk(not miss, f"{env} 环境的{'变量' if kind == 'variables' else '密钥'}：{', '.join(sorted(want))}" + (f"（缺 {', '.join(miss)}）" if miss else ""))
 sys.exit(bad)
 PY
 exit $fail

@@ -24,7 +24,7 @@ on:
 jobs:
   release:
     permissions: { contents: write, checks: read, deployments: write }   # 打 tag、查 CI、写部署记录
-    uses: imelonkid/melon-ci/.github/workflows/server-release.yml@v1
+    uses: imelonkid/melon-ci/.github/workflows/server-release.yml@v2
     with:
       service: __NAME__
       tag-prefix: v                       # 单端项目 v；多端项目（服务端 + 客户端同仓库）用 server-v

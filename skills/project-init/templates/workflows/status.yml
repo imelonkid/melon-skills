@@ -4,7 +4,7 @@ on: workflow_dispatch
 jobs:
   status:
     permissions: { contents: read }
-    uses: imelonkid/melon-ci/.github/workflows/server-status.yml@v1
+    uses: imelonkid/melon-ci/.github/workflows/server-status.yml@v2
     with:
       service: __NAME__
     secrets: inherit
