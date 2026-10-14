@@ -1,4 +1,4 @@
-# 客户端发布的公共部分（source 使用）。服务端用 scripts/deploy.sh（运维模板），规则相同：
+# 客户端发布的公共部分（source 使用）。服务端由线上流水线（melon-ci server-release）发布，规则相同：
 #   - 每个端独立 tag：server-v* / desktop-v* / harmony-v*，线上 / 已发布的版本永远等于某个 tag
 #   - 新 tag 只打在已推送到 origin/main 的干净 HEAD 上，先推 tag 到 GitHub 再构建
 #   - 构建一律取 tag 的内容（git archive），与本地工作区无关；版本号在构建时注入，不改源码

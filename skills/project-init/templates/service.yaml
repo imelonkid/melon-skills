@@ -15,8 +15,8 @@ code:
 deploy:
   dir: /opt/__NAME__
   compose: deploy/docker-compose.prod.yml
-  build: scripts/deploy.sh <tag>         # 一律按 tag：patch|minor|major 发新版，vX.Y.Z 上线 / 回滚到指定版本
-  up: cd /opt/__NAME__ && docker compose -f docker-compose.prod.yml up -d
+  build: 「发布」表单从 tag 构建 __NAME__:vX.Y.Z → 推镜像仓库（melon-ci @v2）
+  up: GitHub「发布 / 回滚」表单或门户（经主机部署入口）；应急 melon rollback __NAME__
   env_example: .env.example
   secrets: ops/__NAME__/prod
 

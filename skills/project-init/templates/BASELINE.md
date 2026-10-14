@@ -1,4 +1,4 @@
-# 项目基线 v1
+# 项目基线 v2
 
 > 2026-10-14 · 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
 >
@@ -17,7 +17,7 @@
 | `deploy/docker-compose.prod.yml`（`templates/docker-compose.prod.yml`）：`mem_limit` / `healthcheck` / `restart`、只绑 127.0.0.1、`env_file: .env`、数据只在 `./data` | ✓ | ✓ | | §5.5、§5.6、§6.5 |
 | `.env.example`（`templates/env.example`） | ✓ | 有配置才要 | | §5.4 |
 | 健康检查 `GET /health` → `{"ok", "version"}`（`stacks/<栈>/health.*`；静态站在 Caddyfile） | ✓ | ✓ | | §8 |
-| `scripts/deploy.sh`（`templates/deploy.sh`）：按 tag 发布 / 回滚 / 状态 / 配置，经主机部署入口 | ✓ | ✓ | | §5.1、§9.3 |
+| **发布只在线上**：GitHub「发布 / 回滚 / 状态」表单（`templates/workflows/`）或门户；**项目里没有部署脚本**。应急用运维终端的 `melon status / rollback / config`（运维仓库 `workstation/bin/melon`，不构建、不产生新版本） | ✓ | ✓ | | §5.1、§9.3 |
 | `scripts/ci-test.sh`（`stacks/<栈>/ci-test.sh`）：不碰外网和真实数据，含 /health 冒烟 | ✓ | ✓ | 有测试就要 | §9 |
 | `.github/workflows/`（`templates/workflows/`）：`ci`（melon-ci pr-check）、`release`、`rollback`、`status` | ✓ | ✓ | `ci` | §9.3 |
 | **镜像必须进镜像仓库**：CI 构建 → 推 ACR → 主机部署入口按摘要拉取（melon-ci `@v2` 没配就失败，不再经 SSH 上传） | ✓ | ✓ | | §5.1 |
@@ -41,13 +41,12 @@
 
 ## 基线升级
 
+- **例外**（登记在项目的注册表 `known_gaps`）：鸿蒙客户端暂时只能本机构建签名（`scripts/release-harmony.sh`），等 AGC 证书与 CI 就位后上线上
 - 基线只在本仓库（melon-skills）升级：改模板 → 升版本号（`templates/melon-baseline` 与本文标题）→ 在下方「变更」写明新增 / 改动了什么、已有项目怎么跟进
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
-## 已知待办
-
-- `templates/deploy.sh`（本机应急发布）仍把本机构建的镜像经 SSH 上传给部署入口，与「镜像必须进镜像仓库」不一致；下一版基线改为本机构建后推镜像仓库、按摘要部署（本机需 `docker login` 镜像仓库）
-
 ## 变更
+
+- **v2**（2026-10-14）：**本机不发版**——删掉 `templates/deploy.sh`，项目不再有 `scripts/deploy.sh`；发布走线上（表单或门户），应急只用 `melon status / rollback / config`；桌面端发布脚本去掉本机发版模式。跟进：删掉项目里的 `scripts/deploy.sh`，README / CLAUDE.md 的发布说明改为线上 + `melon`，`.melon-baseline` 改为 `v2`
 
 - **v1**（2026-10-14）：首版。技术栈模板（python / node / static）、CLAUDE.md「边界（强制）」、`.melon-baseline`、GitHub 仓库设置（`templates/github/settings.json` + `scripts/github-apply.sh`）、**镜像必须进镜像仓库**（流水线表单改用 melon-ci `@v2`）

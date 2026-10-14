@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # 发布 Mac 桌面端：按 tag desktop-vX.Y.Z 构建安装包，上传对象存储，更新下载站的版本清单，存档到 GitHub Release。
 #
-#   scripts/release-desktop.sh patch|minor|major   # 本机一条龙：打下一个 desktop-v tag 并推到 GitHub → 构建 → 发布
-#   scripts/release-desktop.sh desktop-v0.2.0      # 重新构建、发布某个已有版本
 #   scripts/release-desktop.sh build <tag> <目录>   # 只构建（CI 用）：dmg 与 latest.json 写到 <目录>
 #   scripts/release-desktop.sh publish <目录>       # 只发布（CI 用）：上传对象存储 + 版本清单经部署入口 + GitHub Release
 #   scripts/release-desktop.sh oss-test             # 检查对象存储配置：上传一个小文件，再从公网读回来
 #
-# 平时在 GitHub 上点「发布桌面端」（.github/workflows/release-desktop.yml）；本机这条路是应急通道，规则相同。
+# 发布只在线上：GitHub 上点「发布桌面端」（.github/workflows/release-desktop.yml，melon-ci 调用 build / publish）。
+# 项目基线 v2 起本机不发版：没有「本机一条龙」模式。
 #
 # 产物：__PRODUCT__-<版本>-arm64.dmg（未经 Apple 公证：首次打开要在「系统设置 → 隐私与安全性」里放行）
 # 下载：安装包在阿里云 OSS（OSS_BUCKET / OSS_PREFIX），版本清单 latest.json 在服务端 /download/desktop/，
@@ -101,10 +100,5 @@ case "${1:-}" in
     rm -f "$f" ;;
   build)   build "${2:?tag}" "${3:?输出目录}" ;;
   publish) publish "${2:?目录}" ;;
-  *)
-    resolve_tag desktop-v "${1:-}"
-    push_tag
-    OUT="$(mktemp -d)"; trap 'rm -rf "$OUT"' EXIT
-    build "$TAG" "$OUT"
-    publish "$OUT" ;;
+  *) sed -n '2,10p' "$0"; exit 1 ;;
 esac

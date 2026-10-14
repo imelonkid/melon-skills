@@ -92,7 +92,13 @@ elif [[ -z "$C" ]]; then
 else
   echo "▸ 部署（${C#$P/}）"
   [[ -f "$P/.env.example" ]] && ok .env.example || bad "缺 .env.example"
-  [[ -f "$P/scripts/deploy.sh" ]] && ok scripts/deploy.sh || bad "缺 scripts/deploy.sh（发布与回滚必须走 tag）"
+  # 基线 v2：发布只在线上——要有发布 / 回滚表单（melon-ci @v2），不能有本机部署脚本
+  for w in release rollback; do
+    f="$P/.github/workflows/$w.yml"
+    if [[ -f "$f" ]]; then grep -q 'imelonkid/melon-ci/.*@v2' "$f" && ok "$w 表单（melon-ci @v2）" || bad "$w 表单没有调用 melon-ci @v2（镜像必须进镜像仓库）"
+    else bad "缺 .github/workflows/$w.yml（模板 templates/workflows/）"; fi
+  done
+  [[ -f "$P/scripts/deploy.sh" ]] && bad "有 scripts/deploy.sh：基线 v2 起项目不放部署脚本（发布走线上，应急用 melon rollback / status / config）" || ok "没有本机部署脚本"
   if [[ -f "$P/deploy/Dockerfile" ]]; then
     grep -qE '^ARG APP_VERSION' "$P/deploy/Dockerfile" && ok "Dockerfile 烘入 APP_VERSION" || tip "Dockerfile 没有 ARG APP_VERSION（版本号要烘进镜像）"
   else
@@ -119,19 +125,12 @@ else
   [[ -f "$P/.env.example" ]] && { grep -q OTEL_ "$P/.env.example" && ok ".env.example 含 OTel 配置" || tip ".env.example 没有 OTEL_*（§8 埋点）"; }
   grep -rqsE '["'"'"'/]health["'"'"' ]' "$P" --include='*.py' --include='*.js' --include='*.ts' --include='*.go' --include='*.rs' --include='*.java' --exclude-dir=node_modules --exclude-dir=deploy \
     && ok "代码里有 /health" || tip "代码里没找到 /health 接口"
-  if [[ -f "$P/scripts/deploy.sh" ]]; then
-    D="$P/scripts/deploy.sh"
-    grep -qE 'git archive' "$D" && grep -qE 'refs/tags|git tag' "$D" && ok "deploy.sh 按 tag 发布（从 tag 内容构建）" || bad "deploy.sh 不是按 tag 发布：每次发版必须打新 tag，从 tag 构建（模板 templates/deploy.sh）"
-    grep -qE '^\s*rollback\)' "$D" && ok "deploy.sh 支持按 tag 回滚" || bad "deploy.sh 没有 rollback（回滚到上一个 tag）"
-    grep -q EMERGENCY "$D" && ok "deploy.sh 有发布窗口" || tip "deploy.sh 没有 08–23 点发布窗口（§9.3）"
-    grep -qE 'auto-rollback|agent deploy' "$D" && ok "deploy.sh 健康检查失败自动回滚（部署入口 deploy-agent）" || tip "deploy.sh 没有健康检查失败自动回滚（§9.3）"
-  fi
 
   # 多端项目（apps/ 下有客户端）：各端独立 tag、客户端有发布脚本、服务端声明最低客户端版本
   ends=(); for e in desktop harmony ios android; do [[ -d "$P/apps/$e" ]] && ends+=("$e"); done
   if (( ${#ends[@]} )); then
     echo "▸ 多端（${ends[*]}）"
-    grep -qE '^TAG_PREFIX=server-v' "$P/scripts/deploy.sh" 2>/dev/null && ok "服务端 tag 前缀 server-v" || tip "多端项目的服务端应使用 TAG_PREFIX=server-v（各端独立 tag）"
+    grep -qE 'tag-prefix:\s*server-v' "$P/.github/workflows/release.yml" 2>/dev/null && ok "服务端 tag 前缀 server-v" || tip "多端项目的服务端发布表单应使用 tag-prefix: server-v（各端独立 tag）"
     for e in "${ends[@]}"; do
       [[ -x "$P/scripts/release-$e.sh" ]] && ok "scripts/release-$e.sh" || tip "缺 scripts/release-$e.sh（模板 templates/multi-end/）"
     done

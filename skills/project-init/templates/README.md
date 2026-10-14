@@ -8,22 +8,23 @@ __一句话说明：是什么、给谁用__
 __本地启动命令__
 ```
 
-## 部署
+## 发布与回滚
 
-发布和回滚都以 git tag 为单位，没有 tag 的代码不上线。
+发布和回滚都以 git tag 为单位，没有 tag 的代码不上线。**发布只在线上**：GitHub Actions 点「发布」（patch / minor / major），或在内网门户的流水线页发起；回滚同样点「回滚」。
+
+发新版只在 08–23 点，窗口外勾「紧急变更」并在 24 小时内补复盘；回滚不受限。健康检查 60 秒不过自动切回上一版。
+
+GitHub 或门户不可用时，在运维终端用应急指令（不构建、不产生新版本）：
 
 ```bash
-scripts/deploy.sh patch      # 发新版：打下一个 vX.Y.Z（minor / major 同理），推到 GitHub 后构建上线
-scripts/deploy.sh rollback   # 回滚到上一个成功上线的版本（服务器保留最近 5 版，秒级）
-scripts/deploy.sh v1.2.0     # 上线 / 回滚到指定 tag
-scripts/deploy.sh status     # 线上版本与最近的部署事件
+melon status __NAME__          # 线上版本与最近的部署事件
+melon rollback __NAME__        # 切回上一次上线前的版本（服务器保留最近 5 版，秒级）
+pbpaste | melon config __NAME__  # 下发 .env（来自 1Password）
 ```
-
-发新版只在 08–23 点，窗口外用 `EMERGENCY=1` 并在 24 小时内补复盘；回滚不受限。健康检查 60 秒不过自动切回上一版。
 
 ## 上线准入（运维规范 §9.2）
 
-- [ ] 代码在 GitHub，线上版本是一个 tag（`scripts/deploy.sh status`）
+- [ ] 代码在 GitHub，线上版本是一个 tag（`melon status __NAME__`）
 - [ ] `.env.example` 齐全；1Password 有 `ops/__NAME__/prod`
 - [ ] 注册表 `registry/services/__NAME__.yaml` 通过字段检查
 - [ ] T0/T1 资产首次备份成功，**做过一次恢复验证**；备份心跳接入 Gatus

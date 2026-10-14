@@ -92,7 +92,6 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | `deploy/docker-compose.prod.yml` | `templates/docker-compose.prod.yml` | 见「容器规范」|
 | `deploy/docker-compose.yml` | 按需 | 本地开发 |
 | `.env.example` | `templates/env.example` | 全部变量 + 注释，值留空或示例 |
-| `scripts/deploy.sh` | `templates/deploy.sh` | 见「发布」|
 | `.github/workflows/ci.yml` | `templates/workflows/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
 | `scripts/ci-test.sh` | `templates/stacks/<栈>/ci-test.sh` | CI 的测试入口（含 /health 冒烟）：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
 | `GET /health` | 代码，示例 `templates/stacks/<栈>/health.*` | 200 = 能正常服务；顺带检查数据库连接；返回体带 `version`（读 `APP_VERSION`）|
@@ -122,25 +121,27 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - 真实值只在 1Password `ops/<名>/prod`，**由用户本人创建和填写**，Claude 不经手密钥值。
 - 服务器上的 `/opt/<名>/.env` 只是副本，部署脚本不碰它。
 
-#### 发布与回滚：一律走 tag（§5.1、§9.3）
+#### 发布与回滚：一律走 tag，只在线上（§5.1、§9.3）
 
-线上版本永远等于某个 git tag。`scripts/deploy.sh`（模板 `templates/deploy.sh`）：
+线上版本永远等于某个 git tag。**发布只在线上**（项目基线 v2）：GitHub 的「发布 / 回滚 / 状态」表单（`templates/workflows/`，调用 melon-ci `@v2`），或内网门户的流水线页。**项目里不放部署脚本**——本机发版会绕过门禁、不进执行记录，还和线上逻辑走偏。
 
-| 命令 | 做什么 |
+| 场景 | 怎么做 |
 |---|---|
-| `deploy.sh patch\|minor\|major` | 发新版：在已推送到 `origin/main` 的干净 HEAD 打下一个 `vX.Y.Z`，**先推 tag 到 GitHub**，再从 tag 的内容（`git archive`）构建、上线 |
-| `deploy.sh vX.Y.Z` | 上线指定的已有 tag：比线上旧 = 回滚，相同 = 重新部署 |
-| `deploy.sh rollback` | 回滚到上一个成功上线的 tag |
-| `deploy.sh status` | 线上版本（服务器 `RELEASE`）与最近的部署事件 |
+| 发新版 | 表单「发布」选 patch / minor / major：门禁（发布窗口、main 的 CI 绿）→ 打 tag → 从 tag 构建 → 推镜像仓库 → 部署入口按摘要拉取上线 |
+| 回滚 | 表单「回滚」（留空 = 上一次上线前的版本，或填 tag） |
+| GitHub / 门户不可用 | 运维终端：`melon rollback <名> [tag]`、`melon status <名>`（不构建，切到服务器上已有的版本） |
+| 下发配置 | `pbpaste \| melon config <名>`（.env 来自 1Password，不经 GitHub） |
 
-- 镜像 `<名>:<tag>`，compose 也取自同一个 tag（服务器 `releases/<tag>.yml`）；上线 = 把该 tag 切成 `:prod` 并 `up -d`。
+服务器侧的规则（部署入口 deploy-agent 执行）：
+
+- 镜像 `<名>:<tag>`，compose 取自同一个 tag（服务器 `releases/<tag>.yml`）；上线 = 把该 tag 切成 `:prod` 并 `up -d`。
 - 服务器保留最近 5 个版本，回滚到其中任何一个**不重新构建**，秒级完成。
 - 健康检查 60 秒不过，自动切回上线前的版本（镜像和 compose 一起切）。
 - T0 服务发新版前先跑 `/opt/<名>/pre-deploy.sh` 备份（回滚不跑）。
 - 每次部署往 `/opt/<名>/deploy.log` 追加一行：时间、tag、类型（release / rollback / redeploy / auto-rollback）、操作人、结果。
-- 发新版只在 **08–23 点**，窗口外必须 `EMERGENCY=1` 并在 24 小时内补复盘；**回滚不受窗口限制**。
+- 发新版只在 **08–23 点**，窗口外勾「紧急变更」并在 24 小时内补复盘；**回滚不受窗口限制**。
 - 数据库迁移必须**向后兼容**（先扩展、再收缩），保证回滚到上一个 tag 仍能跑。
-- **不要**在服务器上手动改镜像标签、compose 或 `docker run`——一切经 `deploy.sh`，否则 `RELEASE` 和 `deploy.log` 就不可信了。
+- **不要**在服务器上手动改镜像标签、compose 或 `docker run`——否则 `RELEASE` 和 `deploy.log` 就不可信了。
 
 #### 多端项目（服务端 + 网页 + 桌面 + 手机，一个仓库）
 
@@ -148,7 +149,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 | 端 | tag | 产物与渠道 | 回滚 |
 |---|---|---|---|
-| 服务端 | `server-vX.Y.Z` | 镜像，`scripts/deploy.sh`（模板 `deploy.sh`，`TAG_PREFIX=server-v`） | `deploy.sh rollback`，秒级 |
+| 服务端 | `server-vX.Y.Z` | 镜像，「发布服务端」表单（`tag-prefix: server-v`） | 「回滚服务端」表单或 `melon rollback`，秒级 |
 | 网页界面 | 随服务端 | 服务端在 `/app/` 提供，**界面与服务端同版本** | 跟着服务端回滚 |
 | 桌面（Electron） | `desktop-vX.Y.Z` | `scripts/release-desktop.sh`：从 tag 构建 dmg → 下载站 `/download/desktop/`（`latest.json` 最后上传）→ GitHub Release 存档 | 装出去收不回来：修复后发 patch |
 | 鸿蒙 | `harmony-vX.Y.Z` | `scripts/release-harmony.sh`：版本号与签名**构建时注入**（不改源码）→ GitHub Release → AGC | 应用市场不能回滚，只能发更高版本 |
@@ -175,7 +176,7 @@ gh repo create imelonkid/<名> --private --source . --remote origin --push   # �
 git remote set-url origin git@github.com:imelonkid/<名>.git                 # 之后走 1Password SSH Agent
 ```
 
-首次上线也是 `scripts/deploy.sh minor`（得到 `v0.1.0`），由上线环节做，初始化阶段不碰服务器。
+首次上线也走「发布」表单（minor，得到 `v0.1.0`），由上线环节做，初始化阶段不碰服务器。
 
 已有远端但不在 GitHub：旧远端改名（如 `gitea`）保留，GitHub 作为新的 `origin`，推送全部分支和标签；告诉用户迁完再删旧远端。
 

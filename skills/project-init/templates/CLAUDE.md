@@ -20,7 +20,7 @@ __本地启动命令__
 
 - 定级：数据 __TIER__ · 灾备 __DR__ · 主站点 __SITE__（备 __FAILOVER__，裁判 __WITNESS__）
 - 注册表：`$OPS_REPO/registry/services/__NAME__.yaml` —— 改部署方式、数据位置、端口、域名时同步改它
-- 发布与回滚一律走 tag：`scripts/deploy.sh patch|minor|major` 发新版，`rollback` 或 `vX.Y.Z` 回滚；不要手动在服务器上改镜像或 compose
+- 发布与回滚一律走 tag，**只在线上**：GitHub「发布 / 回滚」表单或内网门户；本仓库不放部署脚本。应急只用运维终端的 `melon status / rollback / config`；不要手动在服务器上改镜像或 compose
 - 新版只在 08–23 点发，窗口外 `EMERGENCY=1` 并补复盘；健康检查不过自动切回上一版
 - 配置：`.env.example` 列全部变量；真实值在 1Password `ops/__NAME__/prod`；服务器 `.env` 只是副本
 - 服务器操作用 server-ops skill；本项目代码里不写任何主机地址
