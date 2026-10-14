@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 回到哪个版本（如 server-v0.1.1；留空 = 上一个成功上线的版本）
+        description: 回到哪个版本（如 v0.1.1；留空 = 上一个成功上线的版本）
         type: string
         default: ""
 jobs:

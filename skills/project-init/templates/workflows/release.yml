@@ -1,6 +1,6 @@
 # 发布服务端（开发发布平台 P4.3）：Actions → 「发布服务端」→ Run workflow，选 patch / minor / major。
 # 门禁：08–23 点（emergency 例外，24 小时内补复盘）、main 最新提交的 CI 必须是绿的。
-# 打 tag server-vX.Y.Z → 从 tag 构建 → 经主机部署入口上传并部署 → 健康检查不过自动切回 → 记录到 Deployments。
+# 打 tag vX.Y.Z（多端项目 server-vX.Y.Z）→ 从 tag 构建 → 经主机部署入口上传并部署 → 健康检查不过自动切回 → 记录到 Deployments。
 name: 发布服务端
 # 运行名带上参数：GitHub 不记录手动触发时填的值，内网门户的流水线页和 Actions 列表靠它显示版本与方式
 run-name: "发布服务端 · ${{ inputs.bump }}${{ inputs.emergency && ' · 紧急变更' || '' }}"
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 版本号怎么升（也可以填已有 tag，如 server-v0.1.2，表示重新部署 / 回到它）
+        description: 版本号怎么升（也可以填已有 tag，如 v0.1.2，表示重新部署 / 回到它）
         type: choice
         options: [patch, minor, major]
         default: patch
@@ -27,7 +27,7 @@ jobs:
     uses: imelonkid/melon-ci/.github/workflows/server-release.yml@v1
     with:
       service: __NAME__
-      tag-prefix: server-v
+      tag-prefix: v                       # 单端项目 v；多端项目（服务端 + 客户端同仓库）用 server-v
       bump: ${{ inputs.bump }}
       emergency: ${{ inputs.emergency }}
     secrets: inherit
