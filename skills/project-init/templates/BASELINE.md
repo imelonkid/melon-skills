@@ -44,6 +44,10 @@
 - 基线只在本仓库（melon-skills）升级：改模板 → 升版本号（`templates/melon-baseline` 与本文标题）→ 在下方「变更」写明新增 / 改动了什么、已有项目怎么跟进
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
+## 已知待办
+
+- `templates/deploy.sh`（本机应急发布）仍把本机构建的镜像经 SSH 上传给部署入口，与「镜像必须进镜像仓库」不一致；下一版基线改为本机构建后推镜像仓库、按摘要部署（本机需 `docker login` 镜像仓库）
+
 ## 变更
 
 - **v1**（2026-10-14）：首版。技术栈模板（python / node / static）、CLAUDE.md「边界（强制）」、`.melon-baseline`、GitHub 仓库设置（`templates/github/settings.json` + `scripts/github-apply.sh`）、**镜像必须进镜像仓库**（流水线表单改用 melon-ci `@v2`）
