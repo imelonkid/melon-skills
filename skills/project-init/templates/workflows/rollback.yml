@@ -2,6 +2,11 @@
 name: 回滚服务端
 # 运行名带上参数：GitHub 不记录手动触发时填的值，内网门户的流水线页和 Actions 列表靠它显示版本与方式
 run-name: "回滚服务端 → ${{ inputs.tag || '上一个成功上线的版本' }}"
+# 同一时间只跑一个服务端的发布 / 回滚（两条流水线共用这一组）：后来的排队，不取消正在跑的。
+# 防止接连点几次造成连续切换；部署入口自己还有锁，看板也会拦（第一道）
+concurrency:
+  group: ${{ github.repository }}-server-deploy
+  cancel-in-progress: false
 on:
   workflow_dispatch:
     inputs:
