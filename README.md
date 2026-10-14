@@ -4,7 +4,7 @@
 
 | Skill | 用途 |
 |---|---|
-| [`project-init`](skills/project-init/SKILL.md) | 按 melon-ops 运维规范初始化新项目（或纳管已有项目）：GitHub 托管、自动定级（数据 / 灾备 / 主备裁判）、部署与可观测模板、CLAUDE.md 边界（强制）、服务注册、上线准入检查 |
+| [`project-init`](skills/project-init/SKILL.md) | 按 melon-ops 运维规范与**项目基线**（`templates/BASELINE.md`）初始化新项目（或纳管已有项目）：GitHub 托管、自动定级（数据 / 灾备 / 主备裁判）、部署与可观测模板、CLAUDE.md 边界（强制）、服务注册、上线准入检查 |
 | [`server-ops`](skills/server-ops/SKILL.md) | 多云服务器运维：巡检、排障、部署、基线收敛、灾备。坐标来自环境变量，事实在私有仓库 |
 | [`article-review`](skills/article-review/SKILL.md) | 博客文章发布前审阅：错别字、语病、文笔、标签、图片；产出待审 commit 与逐字 diff |
 

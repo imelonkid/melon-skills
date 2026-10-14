@@ -1,0 +1,16 @@
+# 项目基线 v1 · 静态站。容器里监听 8080，对外由主机的反向代理走 HTTPS
+{
+	admin off
+	auto_https off
+}
+:8080 {
+	encode gzip
+	# 健康检查：返回版本号（= tag，构建时注入）
+	handle /health {
+		header Content-Type application/json
+		respond `{"ok":true,"version":"{$APP_VERSION}"}` 200
+	}
+	root * /srv
+	try_files {path} {path}/ {path}.html
+	file_server
+}

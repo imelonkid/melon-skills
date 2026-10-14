@@ -1,6 +1,6 @@
 // 唯一的 skill 清单：侧栏「页面」菜单和首页卡片都从这里生成。新增 skill 先改这里。
 const SKILLS = [
-  { id: 'project-init', name: '项目初始化', summary: '按 melon-ops 运维规范起项目：GitHub 托管、自动定级、容器与可观测达标、服务注册、上线准入检查。', tags: ['git', 'docker', '规范'] },
+  { id: 'project-init', name: '项目初始化', summary: '按 melon-ops 运维规范与项目基线起项目：GitHub 托管、自动定级、技术栈模板、容器与可观测达标、服务注册、上线准入检查。', tags: ['git', 'docker', '规范'] },
   { id: 'server-ops', name: '服务器运维', summary: '多云服务器的巡检、排障、部署、基线收敛与灾备。坐标全部来自环境变量，事实在私有仓库。', tags: ['ssh', '监控', '基线'] },
   { id: 'article-review', name: '文章审阅', summary: '博客发布前的审阅：错别字、语病、文笔、标签与图片，产出可逐字对比的待审 commit。', tags: ['博客', 'Obsidian', '写作'] },
 ];

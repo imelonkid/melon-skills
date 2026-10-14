@@ -58,6 +58,16 @@ else
   git -C "$P" check-ignore -q --no-index x.db || tip ".gitignore 没有忽略 *.db"
 fi
 
+# 项目基线：项目按哪一版接入（templates/BASELINE.md）
+BASE_CUR="$(cat "$(dirname "$0")/../templates/melon-baseline" 2>/dev/null || echo v1)"
+echo "▸ 项目基线（当前 $BASE_CUR）"
+if [[ -f "$P/.melon-baseline" ]]; then
+  BASE_PRJ="$(tr -d '[:space:]' < "$P/.melon-baseline")"
+  [[ "$BASE_PRJ" == "$BASE_CUR" ]] && ok "按基线 $BASE_PRJ 接入" || tip "按基线 $BASE_PRJ 接入，当前是 $BASE_CUR：按 templates/BASELINE.md「变更」跟进后改 .melon-baseline"
+else
+  tip "没有 .melon-baseline：还没对照项目基线（templates/BASELINE.md）接入"
+fi
+
 echo "▸ 文件"
 [[ -f "$P/README.md" ]] && ok README.md || tip "缺 README.md"
 # CLAUDE.md 是 Claude 在本项目开发的强制约束：必须存在，且有「## 边界」一节（负责 / 不负责 / 与其他项目的关系）。

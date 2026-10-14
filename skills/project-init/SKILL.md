@@ -35,7 +35,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 | 4 | 默认分支 `main`；提交信息 `<类型>(<范围>): <中文描述>` | — |
 | 5 | **发布与回滚一律走 tag**：每次发版打新的 `vX.Y.Z`，线上版本永远是某个 tag；回滚 = 上线一个旧 tag。没有 tag 的代码不上线 | §5.1、§9.3 |
 | 6 | **服务必须注册**：不在 `registry/services/` 里的服务不允许上线 | §1、§9.1 |
-| 7 | **必须有 `CLAUDE.md`，且有「## 边界（强制）」一节**：本项目负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束，越界的需求先停下来确认。**业务项目只写自己的边界**（如 jolly 与 melon-ai 的产品 / 引擎之分），不写平台分工；**平台项目**（melon-ops、melon-portal、melon-vine、melon-ci、melon-skills）的边界以 ops 仓库 `docs/09-projects.md` 为准 | — |
+| 7 | **必须有 `CLAUDE.md`，且有「## 边界（强制）」一节**：本项目负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束，越界的需求先停下来确认。**业务项目只写自己的边界**（如产品与它依赖的引擎各管什么），不写平台分工；**平台项目**（melon-ops、melon-portal、melon-vine、melon-ci、melon-skills）的边界以 ops 仓库 `docs/09-projects.md` 为准 | — |
 
 ## 流程
 
@@ -71,7 +71,9 @@ git init -b main
 cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 ```
 
-### 3. 骨架
+### 3. 骨架（按项目基线）
+
+**项目基线**定义在 [`templates/BASELINE.md`](templates/BASELINE.md)：每类项目必须有哪些文件、对应规范哪一条、check.sh 怎么查。**以基线为准，不以任何具体业务项目为样板**；基线缺的东西先补进基线（升版本），再用到项目里。技术栈相关的文件取 `templates/stacks/<栈>/`（python / node / static）。
 
 所有类型：
 
@@ -80,21 +82,22 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | `README.md` | `templates/README.md`（含「上线准入」清单） |
 | `CLAUDE.md` | `templates/CLAUDE.md`，**必须**填好「边界（强制）」一节（硬性要求 7）；纳管已有项目时也要补上 |
 | `.gitignore` | 第 2 步 |
+| `.melon-baseline` | `templates/melon-baseline`（记录按哪一版基线接入） |
 
 **服务**另加：
 
 | 文件 | 来源 | 要点 |
 |---|---|---|
-| `deploy/Dockerfile` | 按技术栈写 | 多阶段构建；基础镜像**钉版本**；`ARG APP_VERSION` + `ENV APP_VERSION=$APP_VERSION`（版本号烘进镜像）；最终镜像要有 `wget` 或 `curl`（健康检查用）|
+| `deploy/Dockerfile` | `templates/stacks/<栈>/Dockerfile` | 多阶段构建；基础镜像**钉版本**；`ARG APP_VERSION` + `ENV APP_VERSION=$APP_VERSION`（版本号烘进镜像）；最终镜像要有 `wget` 或 `curl`（健康检查用）|
 | `deploy/docker-compose.prod.yml` | `templates/docker-compose.prod.yml` | 见「容器规范」|
 | `deploy/docker-compose.yml` | 按需 | 本地开发 |
 | `.env.example` | `templates/env.example` | 全部变量 + 注释，值留空或示例 |
 | `scripts/deploy.sh` | `templates/deploy.sh` | 见「发布」|
 | `.github/workflows/ci.yml` | `templates/workflows/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
-| `scripts/ci-test.sh` | `templates/ci-test.sh` | CI 的测试入口：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
-| `GET /health` | 代码 | 200 = 能正常服务；顺带检查数据库连接；返回体带 `version`（读 `APP_VERSION`）|
+| `scripts/ci-test.sh` | `templates/stacks/<栈>/ci-test.sh` | CI 的测试入口（含 /health 冒烟）：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
+| `GET /health` | 代码，示例 `templates/stacks/<栈>/health.*` | 200 = 能正常服务；顺带检查数据库连接；返回体带 `version`（读 `APP_VERSION`）|
 
-**静态站**：同样按 tag 发布——从 tag 的内容构建，上线后在服务器记 `RELEASE` 与 `deploy.log`；构建产物不进 git；部署只同步构建目录，**不要对干净 checkout 用 `rsync --delete`**（线上可能有不在 git 里的内容，比如由 Obsidian 同步的文章，这种情况写进 `known_gaps`）。
+**静态站**：**也按镜像发布**（`templates/stacks/static/`：构建 → Caddy 提供，`/health` 返回版本），与服务走同一条 tag 发布 / 回滚路径；构建产物不进 git。线上若有不在 git 里的内容（例如由 Obsidian 同步的文章），挂成数据卷并写进注册表 `assets` 与 `known_gaps`，**不要对干净 checkout 用 `rsync --delete`**。
 
 #### 容器规范（§5、§6）
 
@@ -141,7 +144,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 #### 多端项目（服务端 + 网页 + 桌面 + 手机，一个仓库）
 
-样板项目：jolly（`apps/server`、`apps/web`、`apps/desktop`、`apps/harmony`）。模板在 `templates/multi-end/`。
+目录约定：`apps/server`、`apps/web`、`apps/desktop`、`apps/harmony`（按实际有的端）。模板在 `templates/multi-end/`。
 
 | 端 | tag | 产物与渠道 | 回滚 |
 |---|---|---|---|

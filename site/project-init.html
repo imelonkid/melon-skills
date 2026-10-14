@@ -42,6 +42,21 @@
   </table></div>
 </section>
 
+<section id="baseline" data-toc="项目基线">
+  <h2>项目基线</h2>
+  <p class="intro">规范（运维仓库 <code>docs/01-standard.md</code>）说「要什么」，<b>项目基线</b>说「照着哪些文件做就满足了」。所有项目都对照基线，不以任何具体业务项目为样板；基线缺的先补进基线、升版本，再用到项目里。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>部分</th><th>位置</th></tr></thead>
+    <tbody>
+      <tr><td>基线定义（按项目类型逐项、对应规范条目、变更记录）</td><td><code>templates/BASELINE.md</code>，当前 v1</td></tr>
+      <tr><td>通用模板</td><td><code>templates/</code>：README、CLAUDE.md、gitignore、env.example、deploy.sh、生产 compose、注册表条目、流水线表单</td></tr>
+      <tr><td>技术栈模板</td><td><code>templates/stacks/{python,node,static}/</code>：Dockerfile、健康检查示例、ci-test.sh</td></tr>
+      <tr><td>多端</td><td><code>templates/multi-end/</code></td></tr>
+      <tr><td>项目记录</td><td>项目根目录 <code>.melon-baseline</code>，check.sh 对比当前版本</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
 <section id="hard" data-toc="硬性要求">
   <h2>硬性要求</h2>
   <div class="principles">
@@ -91,12 +106,13 @@
     <tbody>
       <tr><td><code>.gitignore</code></td><td><code>templates/gitignore</code></td><td><span class="badge b-n">全部</span></td></tr>
       <tr><td><code>README.md</code></td><td><code>templates/README.md</code>，含 §9.2 上线准入清单</td><td><span class="badge b-n">全部</span></td></tr>
+      <tr><td><code>.melon-baseline</code></td><td><code>templates/melon-baseline</code>：记录按哪一版项目基线接入（基线定义 <code>templates/BASELINE.md</code>）</td><td><span class="badge b-n">全部</span></td></tr>
       <tr><td><code>CLAUDE.md</code></td><td><code>templates/CLAUDE.md</code>，含「边界（强制）」、定级与运维约定</td><td><span class="badge b-n">全部</span></td></tr>
       <tr><td><code>deploy/docker-compose.prod.yml</code></td><td><code>templates/docker-compose.prod.yml</code></td><td><span class="badge b-ok">服务</span></td></tr>
-      <tr><td><code>deploy/Dockerfile</code></td><td>按技术栈写，多阶段构建，基础镜像钉版本</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>deploy/Dockerfile</code></td><td><code>templates/stacks/&lt;栈&gt;/Dockerfile</code>（python / node / static）：基础镜像钉版本，<code>APP_VERSION</code> 烘进镜像</td><td><span class="badge b-ok">服务</span> <span class="badge b-n">静态站</span></td></tr>
       <tr><td><code>.env.example</code></td><td><code>templates/env.example</code>，含 OTel 配置</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>scripts/deploy.sh</code></td><td><code>templates/deploy.sh</code></td><td><span class="badge b-ok">服务</span></td></tr>
-      <tr><td><code>.github/workflows/ci.yml</code> · <code>scripts/ci-test.sh</code></td><td><code>templates/workflows/ci.yml</code> · <code>templates/ci-test.sh</code>：PR 检查（melon-ci）</td><td><span class="badge b-ok">服务</span></td></tr>
+      <tr><td><code>.github/workflows/ci.yml</code> · <code>scripts/ci-test.sh</code></td><td><code>templates/workflows/ci.yml</code> · <code>templates/stacks/&lt;栈&gt;/ci-test.sh</code>：PR 检查（melon-ci），含 /health 冒烟</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>.github/workflows/{release,rollback,status}.yml</code></td><td><code>templates/workflows/</code>：在 GitHub（手机）上发布、回滚、看线上状态；需 production 环境与分支保护</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>$OPS_REPO/registry/services/&lt;名&gt;.yaml</code></td><td><code>templates/service.yaml</code></td><td><span class="badge b-ok">服务</span> <span class="badge b-ok">静态站</span></td></tr>
     </tbody>
@@ -162,7 +178,7 @@
 
 <section id="multi" data-toc="多端项目">
   <h2>多端项目：一个仓库，各端独立发布</h2>
-  <p class="intro">样板是 jolly：服务端、网页界面、Mac 桌面端、鸿蒙 App 在同一个仓库。模板在 <code>templates/multi-end/</code>。</p>
+  <p class="intro">服务端、网页界面、桌面端、鸿蒙 App 在同一个仓库（目录 <code>apps/server</code>、<code>apps/web</code>、<code>apps/desktop</code>、<code>apps/harmony</code>）。在「服务」基线之上加 <code>templates/multi-end/</code>。</p>
   <div class="tbl"><table>
     <thead><tr><th>端</th><th>tag</th><th>产物与渠道</th><th>回滚</th></tr></thead>
     <tbody>
@@ -190,6 +206,7 @@
     <thead><tr><th>类别</th><th>检查项</th></tr></thead>
     <tbody>
       <tr><td>git</td><td>是仓库、分支 main、远端在 GitHub、已推送、没有跟踪密钥或数据文件、<code>.gitignore</code> 覆盖 <code>.env</code>；鸿蒙 <code>build-profile.json5</code> 不含签名密码；gitleaks 扫 git 历史</td></tr>
+      <tr><td>基线</td><td>项目的 <code>.melon-baseline</code> 与当前基线版本对比，落后或没有记录给 △</td></tr>
       <tr><td>文件</td><td>README、CLAUDE.md（缺了或没有「边界」一节都是 ✗）；服务另查 <code>.env.example</code>（含 OTel）、Dockerfile 烘入 <code>APP_VERSION</code>、<code>/health</code></td></tr>
       <tr><td>发布</td><td>deploy.sh <b>按 tag 发布</b>（从 tag 构建）、支持 <code>rollback</code>、有发布窗口、健康检查失败自动回滚</td></tr>
       <tr><td>多端</td><td>有 <code>apps/desktop</code> 等客户端时：服务端 tag 前缀 <code>server-v</code>、各端有 <code>scripts/release-&lt;端&gt;.sh</code>、服务端返回 <code>minClient</code></td></tr>
