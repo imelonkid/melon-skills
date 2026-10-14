@@ -35,6 +35,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 | 4 | 默认分支 `main`；提交信息 `<类型>(<范围>): <中文描述>` | — |
 | 5 | **发布与回滚一律走 tag**：每次发版打新的 `vX.Y.Z`，线上版本永远是某个 tag；回滚 = 上线一个旧 tag。没有 tag 的代码不上线 | §5.1、§9.3 |
 | 6 | **服务必须注册**：不在 `registry/services/` 里的服务不允许上线 | §1、§9.1 |
+| 7 | **必须有 `CLAUDE.md`，且有「## 边界（强制）」一节**：本项目负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束，越界的需求先停下来确认。**业务项目只写自己的边界**（如 jolly 与 melon-ai 的产品 / 引擎之分），不写平台分工；**平台项目**（melon-ops、melon-portal、melon-vine、melon-ci、melon-skills）的边界以 ops 仓库 `docs/09-projects.md` 为准 | — |
 
 ## 流程
 
@@ -49,6 +50,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 | 技术栈 | 按用户说的；没说就问 |
 | 可见性 | 私有（默认）/ 公开 |
 | 对外域名 | 服务 / 静态站才问；默认 `<名>.melonkid.cn` |
+| 边界 | 负责什么、不负责什么（容易被误放进来的东西归谁）、依赖或被谁依赖。能从用户描述和目录推出来就不问，写进确认摘要 |
 
 然后**由 Claude 按规范推出**下列各项，写进给用户的确认摘要，用户可改：
 
@@ -76,7 +78,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | 文件 | 来源 |
 |---|---|
 | `README.md` | `templates/README.md`（含「上线准入」清单） |
-| `CLAUDE.md` | `templates/CLAUDE.md` |
+| `CLAUDE.md` | `templates/CLAUDE.md`，**必须**填好「边界（强制）」一节（硬性要求 7）；纳管已有项目时也要补上 |
 | `.gitignore` | 第 2 步 |
 
 **服务**另加：

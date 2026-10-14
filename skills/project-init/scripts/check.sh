@@ -60,7 +60,17 @@ fi
 
 echo "▸ 文件"
 [[ -f "$P/README.md" ]] && ok README.md || tip "缺 README.md"
-[[ -f "$P/CLAUDE.md" ]] && ok CLAUDE.md || tip "缺 CLAUDE.md"
+# CLAUDE.md 是 Claude 在本项目开发的强制约束：必须存在，且有「## 边界」一节（负责 / 不负责 / 与其他项目的关系）。
+# 允许 CLAUDE.md 是指向 AGENTS.md 的链接，或用 @AGENTS.md 引用它
+if [[ -f "$P/CLAUDE.md" ]]; then
+  ok CLAUDE.md
+  claude_txt="$(cat "$P/CLAUDE.md")"
+  grep -q '^@AGENTS.md' "$P/CLAUDE.md" && [[ -f "$P/AGENTS.md" ]] && claude_txt+=$'\n'"$(cat "$P/AGENTS.md")"
+  if grep -q '^## 边界' <<<"$claude_txt"; then ok "CLAUDE.md 有「边界」"
+  else bad "CLAUDE.md 没有「## 边界（强制）」一节：写明本项目负责什么、不负责什么（归谁）、与其他项目的关系"; fi
+else
+  bad "缺 CLAUDE.md（Claude 在本项目开发的强制约束，模板 templates/CLAUDE.md）"
+fi
 
 C=""
 for c in deploy/docker-compose.prod.yml docker-compose.prod.yml; do [[ -f "$P/$c" ]] && { C="$P/$c"; break; }; done

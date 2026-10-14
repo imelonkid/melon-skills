@@ -2,6 +2,14 @@
 
 给在本仓库工作的 AI 助手（Claude Code、Codex 等）和人看。`CLAUDE.md` 引用本文件。
 
+## 边界（强制）
+
+项目地图见运维仓库 `$OPS_REPO/docs/09-projects.md`。
+
+- **本项目负责**：Claude skills（`skills/`）、安装脚本、介绍页（`index.html`、`site/`）、提交前的敏感信息扫描
+- **本项目不负责**：运维事实与坐标（→ melon-ops，运行时读 `$OPS_REPO` 与环境变量）；流水线（→ melon-ci）；门户（→ melon-portal）
+- **契约**：skill 读的环境变量名（`ops.zsh` 里定义）与运维仓库的文档路径；改名两边同日提交
+
 ## 这是什么
 
 melonkid 的 Claude Code skills。**公开仓库**。每个 skill 一个目录，`install.sh` 把它们软链到 `~/.claude/skills/`。
