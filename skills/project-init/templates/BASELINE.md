@@ -20,6 +20,7 @@
 | `scripts/deploy.sh`（`templates/deploy.sh`）：按 tag 发布 / 回滚 / 状态 / 配置，经主机部署入口 | ✓ | ✓ | | §5.1、§9.3 |
 | `scripts/ci-test.sh`（`stacks/<栈>/ci-test.sh`）：不碰外网和真实数据，含 /health 冒烟 | ✓ | ✓ | 有测试就要 | §9 |
 | `.github/workflows/`（`templates/workflows/`）：`ci`（melon-ci pr-check）、`release`、`rollback`、`status` | ✓ | ✓ | `ci` | §9.3 |
+| GitHub 仓库设置（`templates/github/settings.json`，`scripts/github-apply.sh` 应用 / `--check` 核对）：分支保护、合并方式、production 环境 | ✓ | ✓ | | §9.3 |
 | 注册表 `registry/services/<名>.yaml`（字段以 `_schema.yaml` 为准） | ✓ | ✓ | | §1、§9.1 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
 
@@ -44,4 +45,4 @@
 
 ## 变更
 
-- **v1**（2026-10-14）：首版。技术栈模板（python / node / static）、CLAUDE.md「边界（强制）」、`.melon-baseline`
+- **v1**（2026-10-14）：首版。技术栈模板（python / node / static）、CLAUDE.md「边界（强制）」、`.melon-baseline`、GitHub 仓库设置（`templates/github/settings.json` + `scripts/github-apply.sh`）

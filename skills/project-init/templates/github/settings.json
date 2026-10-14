@@ -1,0 +1,23 @@
+{
+  "_说明": "项目基线 v1 · GitHub 仓库设置（服务 / 静态站；需要 GitHub Pro：私有仓库的分支保护与 Environments）。由 scripts/github-apply.sh 应用，--check 只检查。",
+  "repo": {
+    "allow_squash_merge": true,
+    "allow_merge_commit": false,
+    "allow_rebase_merge": false,
+    "delete_branch_on_merge": true
+  },
+  "branch_protection": {
+    "branch": "main",
+    "required_status_checks": {
+      "strict": false,
+      "contexts": ["check / 密钥扫描", "check / 运维规范", "check / 测试", "check / 镜像构建"]
+    },
+    "enforce_admins": true,
+    "required_pull_request_reviews": { "required_approving_review_count": 0 },
+    "required_linear_history": true,
+    "restrictions": null
+  },
+  "environments": {
+    "production": { "branches": ["main"] }
+  }
+}
