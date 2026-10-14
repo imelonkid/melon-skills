@@ -40,6 +40,7 @@
       <tr><td>主机别名、IP、面板端口、容器基线</td><td>环境变量，定义在 <code>~/.zsh/conf.d/ops.zsh</code>（私有仓库的软链）</td></tr>
       <tr><td>规范、站点规划、主机档案、手册、踩坑记录</td><td><code>$OPS_REPO/docs/</code>，入口是白皮书 <code>whitepaper.html</code></td></tr>
       <tr><td>服务清单、站点、主机基线</td><td><code>$OPS_REPO/registry/</code></td></tr>
+      <tr><td>部署入口 deploy-agent 与开发发布平台</td><td><code>$OPS_REPO/agent/</code>、<code>docs/release-platform.html</code>；流水线在公开仓库 <code>imelonkid/melon-ci</code></td></tr>
       <tr><td>面板安全入口等敏感值</td><td>本机 <code>ops.secrets.zsh</code>，原件在 1Password</td></tr>
     </tbody>
   </table></div>
@@ -71,7 +72,7 @@
     <li><h4>一律走基线 <span class="who ai">Claude</span></h4><pre>$OPS_REPO/baseline/apply.py &lt;主机&gt; &lt;步骤&gt;</pre></li>
     <li><h4>sudo 要密码的主机 <span class="who me">用户</span></h4><p>脚本只把命令准备好，交给用户执行——刻意保留的人工关卡。</p></li>
     <li><h4>重点业务机分段改</h4><p>先做低风险、不重启的 → 复核 → 再动存储或内核 → 用户确认后手动重启。</p></li>
-    <li><h4>业务发布与回滚走 tag</h4><p>用项目的 <code>scripts/deploy.sh &lt;tag|rollback&gt;</code>；线上版本看 <code>/opt/&lt;名&gt;/RELEASE</code> 与 <code>deploy.log</code>，不在服务器上手改镜像或 compose。</p></li>
+    <li><h4>业务发布与回滚只经部署入口</h4><p>日常在 GitHub Actions 点「发布 / 回滚」，应急用项目的 <code>scripts/deploy.sh</code>，两条路都只经主机上的 <code>deploy-agent</code>（deploy 用户 + 强制命令，没有 shell）。线上版本：<code>ssh &lt;主机&gt;-deploy status &lt;服务&gt;</code>。不在服务器上手改镜像或 compose。</p></li>
     <li><h4>重建业务容器以注册表为准</h4><p>用服务清单里的 <code>deploy.up</code>，不凭印象拼命令。</p></li>
     <li><h4>复核</h4><p><code>check.py &lt;主机&gt;</code> 全绿才算完成。</p></li>
   </ol>

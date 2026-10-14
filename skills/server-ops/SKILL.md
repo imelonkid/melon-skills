@@ -31,6 +31,7 @@ zsh -ic 'env | grep -E "^(OPS|ALI|TX|JD|BLOG)_" | grep -v ENTRY | sort'   # 坐�
 | `05-gotchas.md` | 踩过的坑，每条带原因 |
 | `06-roadmap.md` | 对照规范的差距与路线 |
 | `07-wireguard.md` | 内网方案与白名单 |
+| `release-platform.html` | 开发发布平台：CI、发布 / 回滚、部署入口、镜像仓库 |
 | `backup-plan.html` | 数据备份方案 |
 
 服务清单在 `$OPS_REPO/registry/services/`，站点在 `registry/sites.yaml`，主机基线在 `registry/baseline.toml`。
@@ -59,7 +60,12 @@ $OPS_REPO/baseline/check.py                          # 对照 registry/baseline.
 
 **改主机环境一律走基线**：`$OPS_REPO/baseline/apply.py <主机> <步骤>`。root 主机直接执行；sudo 要密码的主机，apply.py 会把脚本传到 `/tmp/ops-apply/` 并打印一条 `ssh -t <主机> 'sudo bash …'`，**交给用户执行**——这是刻意保留的人工确认关卡。做完用 `check.py <主机>` 复核。
 
-**业务发布与回滚一律用项目自己的 `scripts/deploy.sh <tag|rollback>`**（project-init 规范）：线上版本看服务器 `/opt/<名>/RELEASE` 与 `deploy.log`。不要在服务器上手动改镜像标签、compose 或 `docker run`；还没改造成 tag 发布的项目，先按 project-init 改造。
+**业务发布与回滚只经主机上的部署入口 `deploy-agent`**（`$OPS_REPO/agent/`，手册「部署入口」）：
+- 日常：项目仓库 GitHub Actions 的「发布服务端 / 回滚服务端 / 发布桌面端」（流水线在公开仓库 `imelonkid/melon-ci`）；应急：项目里的 `scripts/deploy.sh <patch|tag|rollback|status>`。两条路走同一个入口。
+- 查线上版本：`ssh <主机>-deploy status <服务>`（deploy 用户 + 强制命令，只能调用入口，打不开 shell）。
+- **不要在服务器上手动改镜像标签、compose 或 `docker run`**，否则 `RELEASE` / `deploy.log` 就不可信了；还没改造成 tag 发布的项目，先按 project-init 改造。
+- 新服务接入入口：写 `$OPS_REPO/agent/services/<主机>/<服务>.conf` → `$OPS_REPO/agent/install.sh <主机>`；CI 钥匙放 `agent/authorized/ci-<服务>.pub`（自动只能操作该服务）。
+- 1Password 授权：`<主机>-deploy` 首次连接会弹窗；连续失败报 `communication with agent failed` 时请用户在 1Password 点允许。
 
 **重点业务机分段改**：先做低风险、不重启的 → 复核 → 再动存储 / 内核 → 用户确认后手动重启。重建业务容器以注册表里该服务的 `deploy.up` 为准（有的服务依赖 `--env-file`，漏了会起错配置）。
 
