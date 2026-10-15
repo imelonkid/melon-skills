@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# 发布桌面应用（项目基线 · 桌面应用：独立客户端，没有自己的服务端）：按 tag vX.Y.Z 构建安装包，
+# 安装包与版本清单 latest.json 都上传对象存储，GitHub Release 存档。客户端读 latest.json 提示更新。
+#
+#   scripts/release-desktop.sh build <tag> <目录>   # 只构建（CI 用）：dmg 与 latest.json 写到 <目录>
+#   scripts/release-desktop.sh publish <目录>       # 只发布（CI 用）：上传对象存储（安装包先、清单最后）+ GitHub Release
+#   scripts/release-desktop.sh oss-test             # 检查对象存储配置：上传一个小文件，再从公网读回来
+#
+# 发布只在线上：GitHub 上点「发布」（.github/workflows/release-desktop.yml → melon-ci desktop-release，manifest: oss）。
+# 构建前若有 scripts/prebuild.sh（比如从源码编译随应用分发的工具），会在 tag 的内容里先运行它。
+# 回滚：装到用户电脑上就收不回来，客户端只提示「更新的」版本。新版有问题 → 修复后发 patch。
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+source scripts/lib-release.sh
+
+ARCH=arm64
+PRODUCT=__PRODUCT__                                           # electron-builder 的 productName（安装包名 <PRODUCT>-<版本>-arm64.dmg）
+OSS_ENDPOINT="${OSS_ENDPOINT:-oss-cn-beijing.aliyuncs.com}"
+OSS_PREFIX="${OSS_PREFIX:-__NAME__/desktop}"                  # 子账号只能写这个前缀；公网只读也只开这个前缀
+oss_ready() { [[ -n "${OSS_BUCKET:-}" && -n "${OSS_ACCESS_KEY_ID:-}" && -n "${OSS_ACCESS_KEY_SECRET:-}" ]]; }
+[[ -z "${DOWNLOAD_BASE:-}" && -n "${OSS_BUCKET:-}" ]] && DOWNLOAD_BASE="https://$OSS_BUCKET.$OSS_ENDPOINT/$OSS_PREFIX"
+
+build() {   # build <tag> <输出目录>
+  TAG="$1"; local out="$2"; VER="${TAG#v}"
+  [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "tag 不合法：$TAG"
+  PREV="$(git tag -l 'v[0-9]*' --sort=-v:refname | grep -A1 -x "$TAG" | tail -n +2 | head -1 || true)"
+  mkdir -p "$out"
+  local src; src="$(mktemp -d)"
+  checkout_tag "$src"
+  echo "▸ 构建 $PRODUCT ${VER}（${ARCH}）"
+  ( cd "$src" && pnpm install --frozen-lockfile --silent )
+  if [[ -f "$src/scripts/prebuild.sh" ]]; then ( cd "$src" && bash scripts/prebuild.sh ); fi
+  ( cd "$src" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never )
+  local dmg="$PRODUCT-$VER-$ARCH.dmg"
+  [[ -f "$src/dist/$dmg" ]] || die "没有生成 $dmg"
+  mv "$src/dist/$dmg" "$out/"
+  local sum; sum="$(shasum -a 256 "$out/$dmg" | cut -d' ' -f1)"
+  local link="$dmg"; [[ -n "${DOWNLOAD_BASE:-}" ]] && link="${DOWNLOAD_BASE%/}/$dmg"
+  jq -n --arg v "$VER" --arg t "$TAG" --arg d "$(date '+%F %T')" --arg n "$(notes)" --arg a "$ARCH" --arg f "$link" --arg s "$sum" \
+        '{version:$v, tag:$t, date:$d, notes:$n, files:{($a):$f}, sha256:{($a):$s}}' > "$out/latest.json"
+  rm -rf "$src"
+  echo "▸ 产物：$out/${dmg}（$(du -h "$out/$dmg" | cut -f1)，sha256 ${sum:0:12}…）"
+}
+
+# 上传到 OSS（V1 签名，只用 curl + openssl）
+oss_put() {   # oss_put <文件> <对象名> <content-type> [cache-control]
+  local file="$1" key="$2" ct="$3" cc="${4:-}" date sig resp
+  date="$(LC_ALL=C TZ=GMT date '+%a, %d %b %Y %H:%M:%S GMT')"
+  sig="$(printf 'PUT\n\n%s\n%s\n/%s/%s' "$ct" "$date" "$OSS_BUCKET" "$key" | openssl dgst -sha1 -hmac "$OSS_ACCESS_KEY_SECRET" -binary | base64)"
+  resp="$(curl -sS --fail-with-body -X PUT -T "$file" -H "Date: $date" -H "Content-Type: $ct" ${cc:+-H "Cache-Control: $cc"} \
+    -H "Authorization: OSS $OSS_ACCESS_KEY_ID:$sig" "https://$OSS_BUCKET.$OSS_ENDPOINT/$key" 2>&1)" \
+    || { grep -oE '<(Code|Message)>[^<]*' <<<"$resp" | sed 's/^</  OSS /' >&2; return 1; }
+}
+
+publish() {   # publish <目录>：安装包 → 版本清单（最后，客户端看到清单时安装包一定已就位）→ GitHub Release
+  local out="$1" dmg; dmg="$(cd "$out" && ls "$PRODUCT"-*-$ARCH.dmg | head -1)"
+  [[ -n "$dmg" && -f "$out/latest.json" ]] || die "$out 里没有安装包或 latest.json（先 build）"
+  oss_ready || die "没配对象存储（OSS_BUCKET / OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET）"
+  TAG="$(jq -r .tag "$out/latest.json")"
+  echo "▸ 上传 OSS：$OSS_BUCKET/$OSS_PREFIX/$dmg"
+  oss_put "$out/$dmg" "$OSS_PREFIX/$dmg" application/x-apple-diskimage
+  curl -fsSI "${DOWNLOAD_BASE%/}/$dmg" >/dev/null || die "上传后从公网取不到 ${DOWNLOAD_BASE%/}/${dmg}（前缀开了公共读吗？）"
+  jq --arg a "$ARCH" --arg u "${DOWNLOAD_BASE%/}/$dmg" '.files[$a] = $u' "$out/latest.json" > "$out/latest.json.tmp" && mv "$out/latest.json.tmp" "$out/latest.json"
+  echo "▸ 更新版本清单：$OSS_PREFIX/latest.json"
+  oss_put "$out/latest.json" "$OSS_PREFIX/latest.json" application/json "no-cache"
+  PREV="$(git tag -l 'v[0-9]*' --sort=-v:refname | grep -A1 -x "$TAG" | tail -n +2 | head -1 || true)"
+  github_release "$out/$dmg"
+  echo "✓ $PRODUCT $TAG 已发布：${DOWNLOAD_BASE%/}/$dmg"
+}
+
+case "${1:-}" in
+  oss-test)
+    oss_ready || die "要先设置 OSS_BUCKET、OSS_ACCESS_KEY_ID、OSS_ACCESS_KEY_SECRET（以及 OSS_ENDPOINT）"
+    f="$(mktemp)"; echo "ok $(date '+%F %T')" > "$f"; key="$OSS_PREFIX/ci-test.txt"
+    if oss_put "$f" "$key" text/plain; then echo "✓ 上传成功：$OSS_BUCKET/$key"; else echo "✗ 上传失败（上面是 OSS 返回的原因）"; exit 1; fi
+    if got="$(curl -fsS "${DOWNLOAD_BASE%/}/ci-test.txt")"; then echo "✓ 公网读取成功：$got"; else echo "✗ 公网读取失败：检查匿名只读策略覆盖 $OSS_PREFIX/*"; exit 1; fi
+    rm -f "$f" ;;
+  build)   build "${2:?tag}" "${3:?输出目录}" ;;
+  publish) publish "${2:?目录}" ;;
+  *) sed -n '2,12p' "$0"; exit 1 ;;
+esac

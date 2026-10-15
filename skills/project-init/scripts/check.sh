@@ -87,6 +87,20 @@ for c in deploy/docker-compose.prod.yml docker-compose.prod.yml; do [[ -f "$P/$c
 if [[ -z "$C" && -f "$OPS/registry/services/$NAME.yaml" ]] && grep -qE '^\s+compose:' "$OPS/registry/services/$NAME.yaml"; then
   echo "▸ 部署"
   bad "注册表登记为服务，但仓库没有 deploy/docker-compose.prod.yml"
+elif [[ -z "$C" && -f "$P/package.json" ]] && grep -q '"electron-builder"' "$P/package.json"; then
+  # 基线 · 桌面应用（独立客户端）：发布走 melon-ci desktop-release（manifest: oss），版本号构建时注入
+  echo "▸ 桌面应用"
+  f="$P/.github/workflows/release-desktop.yml"
+  if [[ -f "$f" ]]; then
+    grep -q 'imelonkid/melon-ci/.github/workflows/desktop-release.yml@v2' "$f" && ok "发布表单（melon-ci desktop-release @v2）" || bad "release-desktop.yml 没有调用 melon-ci desktop-release @v2"
+    grep -qE 'manifest:[[:space:]]*oss' "$f" && ok "版本清单放对象存储（manifest: oss）" || tip "独立桌面应用应使用 manifest: oss（没有服务端下载站）"
+  else bad "缺 .github/workflows/release-desktop.yml（模板 templates/desktop/）"; fi
+  [[ -f "$P/scripts/release-desktop.sh" ]] && ok "scripts/release-desktop.sh" || bad "缺 scripts/release-desktop.sh（模板 templates/desktop/）"
+  [[ -f "$P/scripts/lib-release.sh" ]] && ok "scripts/lib-release.sh" || bad "缺 scripts/lib-release.sh（模板 templates/multi-end/）"
+  grep -q 'extraMetadata.version' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "版本号构建时注入" || tip "发布脚本没有 -c.extraMetadata.version（版本号要在构建时注入）"
+  grep -qE '"version":[[:space:]]*"0\.0\.0"' "$P/package.json" && ok "package.json version 固定 0.0.0" || tip "package.json 的 version 应固定 0.0.0（真实版本 = tag，构建时注入）"
+  [[ -f "$P/.github/workflows/ci.yml" ]] && ok "ci.yml" || bad "缺 .github/workflows/ci.yml（melon-ci pr-check：发布门禁要求 main 的 CI 全绿）"
+  [[ -f "$P/scripts/ci-test.sh" ]] && ok "scripts/ci-test.sh" || tip "缺 scripts/ci-test.sh（模板 templates/desktop/ci-test.sh）"
 elif [[ -z "$C" ]]; then
   echo "▸ 没有 docker-compose.prod.yml，按非服务项目处理"
 else

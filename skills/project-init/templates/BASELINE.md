@@ -39,6 +39,21 @@
 
 在「服务」基础上加 `templates/multi-end/`：各端独立 tag（`server-v` / `desktop-v` / `harmony-v`），网页界面由服务端提供，`/api/health` 带 `minClient`，客户端发布脚本共用 `lib-release.sh`。细则见 `SKILL.md`「多端项目」。
 
+## 桌面应用（独立客户端，没有自己的服务端）
+
+适用：只有桌面端、靠别的平台接口工作的客户端（如内网接入客户端 Vine）。和服务有自己的发布方式；与「多端」里的桌面端区别是：没有服务端下载站，版本清单也放对象存储。模板在 `templates/desktop/`。
+
+| 项 | 要求 |
+|---|---|
+| 技术栈 | Electron + electron-builder（Mac arm64 先行）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`） |
+| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿） |
+| 发布脚本 | `scripts/release-desktop.sh`（模板，`build` / `publish` / `oss-test`）+ `scripts/lib-release.sh`（`templates/multi-end/`）；构建前要编译的东西放 `scripts/prebuild.sh` |
+| 分发 | 安装包与 `latest.json`（含 sha256）都在对象存储 `<名>/desktop/`，安装包先传、清单最后传；GitHub Release 存档。子账号**只能写**这个前缀，公网**只读**也只开这个前缀 |
+| 更新 | 客户端启动后与每 6 小时读 `latest.json`，有新版提示下载（没有 Apple 开发者签名做不了静默更新，写进 README 的已知限制） |
+| production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`）。不需要部署入口 |
+| CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`（模板：语法检查 + `node --test`，不下载 Electron） |
+| 注册表 | 不部署到服务器，不登记 `registry/services/`；它依赖的服务端接口写进 CLAUDE.md「契约」 |
+
 ## 基线升级
 
 - **例外**（登记在项目的注册表 `known_gaps`）：鸿蒙客户端暂时只能本机构建签名（`scripts/release-harmony.sh`），等 AGC 证书与 CI 就位后上线上
@@ -46,6 +61,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v2 增补**（2026-10-15）：新增「桌面应用」类型（`templates/desktop/`，melon-ci `desktop-release` 的 `manifest: oss`）。只是加了一类项目，已有项目不用跟进，不升版本号
 
 - **v2**（2026-10-14）：**本机不发版**——删掉 `templates/deploy.sh`，项目不再有 `scripts/deploy.sh`；发布走线上（表单或门户），应急只用 `melon status / rollback / config`；桌面端发布脚本去掉本机发版模式。跟进：删掉项目里的 `scripts/deploy.sh`，README / CLAUDE.md 的发布说明改为线上 + `melon`，`.melon-baseline` 改为 `v2`
 

@@ -165,6 +165,10 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - **版本号一律构建时注入**：服务端 build-arg `APP_VERSION`；Electron `-c.extraMetadata.version`；鸿蒙改解包副本里的 `app.json5`（versionCode = (X+1)·1000000 + Y·1000 + Z，只增不减）。
 - **客户端发布脚本共用** `templates/multi-end/lib-release.sh`：tag 规则、发布窗口、版本说明、GitHub Release 存档。
 
+#### 桌面应用（独立客户端，没有自己的服务端）
+
+按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；`package.json` 的 `version` 固定 `0.0.0`。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。不登记注册表。
+
 ### 4. 首次提交并推到 GitHub
 
 **推送前必须扫 git 历史**：先提交，再 `gitleaks git . --redact`，确认命中都是误报（测试向量、冒烟测试的假 key）再推。不要用 `gitleaks dir`，它会把被忽略的 `.env`、构建缓存也算进去，干净与否看不出来。已有项目要扫**全部历史**，不只是当前版本。

@@ -10,7 +10,7 @@ corepack prepare pnpm@10.32.1 --activate >/dev/null
 pnpm install --frozen-lockfile
 
 echo "▸ 测试"
-pnpm test --if-present
+pnpm run --if-present test
 
 echo "▸ 冒烟：启动服务，等 /health 返回 200"
 DATA="$(mktemp -d)"; LOG="$DATA/server.log"; PORT=$((20000 + RANDOM % 20000))
