@@ -47,7 +47,7 @@
 |---|---|
 | 技术栈 | Electron + electron-builder（Mac arm64 先行）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`） |
 | 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿） |
-| 发布脚本 | `scripts/release-desktop.sh`（模板，`build` / `publish` / `oss-test`）+ `scripts/lib-release.sh`（`templates/multi-end/`）；构建前要编译的东西放 `scripts/prebuild.sh` |
+| 发布脚本 | `scripts/release-desktop.sh`（模板，`build` / `publish` / `oss-test`）+ `scripts/lib-release.sh`（`templates/multi-end/`）；构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
 | 分发 | 安装包与 `latest.json`（含 sha256）都在对象存储 `<名>/desktop/`，安装包先传、清单最后传；GitHub Release 存档。子账号**只能写**这个前缀，公网**只读**也只开这个前缀 |
 | 更新 | 客户端启动后与每 6 小时读 `latest.json`，有新版提示下载（没有 Apple 开发者签名做不了静默更新，写进 README 的已知限制） |
 | production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`）。不需要部署入口 |

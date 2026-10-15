@@ -37,12 +37,12 @@ build() {   # build <tag> <输出目录>
   local src; src="$(mktemp -d)"
   checkout_tag "$src"
   echo "▸ 构建 __PRODUCT__ ${VER}（${ARCH}）"
-  ( cd "$src" && node scripts/vendor.js )
+  ( cd "$src" && node scripts/vendor.js ) || die "拉网页界面的依赖失败"
   for f in react.production.min.js react-dom.production.min.js babel.min.js; do
     [[ -s "$src/apps/web/vendor/$f" ]] || die "网页界面缺 vendor/${f}（scripts/vendor.js 没拉到），安装包里的兜底界面会白屏"
   done
   ( cd "$src/apps/desktop" && pnpm install --frozen-lockfile --silent \
-    && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never )
+    && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never ) || die "桌面端打包失败"
   local dmg="__PRODUCT__-$VER-$ARCH.dmg"
   [[ -f "$src/apps/desktop/dist/$dmg" ]] || die "没有生成 $dmg"
   mv "$src/apps/desktop/dist/$dmg" "$out/"

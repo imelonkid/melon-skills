@@ -7,7 +7,9 @@
 #   scripts/release-desktop.sh oss-test             # 检查对象存储配置：上传一个小文件，再从公网读回来
 #
 # 发布只在线上：GitHub 上点「发布」（.github/workflows/release-desktop.yml → melon-ci desktop-release，manifest: oss）。
-# 构建前若有 scripts/prebuild.sh（比如从源码编译随应用分发的工具），会在 tag 的内容里先运行它。
+# 构建前若有 scripts/prebuild.sh（比如从源码编译随应用分发的工具），会在 tag 的内容里先运行它；
+# 打包后若有 scripts/verify-build.sh <dist>，用它检查产物（缺文件就不发布）。
+# 变量后紧跟中文全角字符一律写 ${…}（macOS 自带 bash 3.2 会把全角字节当成变量名）。
 # 回滚：装到用户电脑上就收不回来，客户端只提示「更新的」版本。新版有问题 → 修复后发 patch。
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -28,9 +30,11 @@ build() {   # build <tag> <输出目录>
   local src; src="$(mktemp -d)"
   checkout_tag "$src"
   echo "▸ 构建 $PRODUCT ${VER}（${ARCH}）"
-  ( cd "$src" && pnpm install --frozen-lockfile --silent )
-  if [[ -f "$src/scripts/prebuild.sh" ]]; then ( cd "$src" && bash scripts/prebuild.sh ); fi
-  ( cd "$src" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never )
+  # 每一步都显式判失败：macOS 自带 bash 3.2 有时报错却以 0 退出，光靠 set -e 拦不住（2026-10-15 Vine v0.1.0 踩过）
+  ( cd "$src" && pnpm install --frozen-lockfile --silent ) || die "安装依赖失败"
+  if [[ -f "$src/scripts/prebuild.sh" ]]; then ( cd "$src" && bash scripts/prebuild.sh ) || die "构建前准备（scripts/prebuild.sh）失败"; fi
+  ( cd "$src" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never ) || die "electron-builder 打包失败"
+  if [[ -f "$src/scripts/verify-build.sh" ]]; then bash "$src/scripts/verify-build.sh" "$src/dist" || die "产物检查（scripts/verify-build.sh）没通过"; fi
   local dmg="$PRODUCT-$VER-$ARCH.dmg"
   [[ -f "$src/dist/$dmg" ]] || die "没有生成 $dmg"
   mv "$src/dist/$dmg" "$out/"

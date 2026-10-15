@@ -12,21 +12,21 @@ ok()  { printf '  ✓ %s\n' "$*"; }
 bad() { printf '  ✗ %s\n' "$*"; fail=$((fail+1)); }
 tip() { printf '  △ %s\n' "$*"; warn=$((warn+1)); }
 
-echo "▸ $NAME（$P）"
+echo "▸ ${NAME}（${P}）"
 
 echo "▸ git"
 if ! git -C "$P" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   bad "不是 git 仓库"
 else
   br="$(git -C "$P" symbolic-ref --short HEAD 2>/dev/null || echo '?')"
-  [[ "$br" == main ]] && ok "分支 main" || tip "当前分支 $br，默认分支应为 main"
+  [[ "$br" == main ]] && ok "分支 main" || tip "当前分支 ${br}，默认分支应为 main"
   url="$(git -C "$P" remote get-url origin 2>/dev/null || true)"
   if [[ -z "$url" ]]; then
     bad "没有 origin 远端（必须托管到 GitHub）"
   elif [[ "$url" =~ github\.com[:/]imelonkid/ ]]; then
     ok "远端 $url"
   else
-    bad "远端不在 GitHub：$url（自建托管跑在业务服务器上，不满足规范 §5.1）"
+    bad "远端不在 GitHub：${url}（自建托管跑在业务服务器上，不满足规范 §5.1）"
   fi
   git -C "$P" rev-parse HEAD >/dev/null 2>&1 || bad "还没有提交"
   if [[ -n "$url" ]] && git -C "$P" rev-parse '@{u}' >/dev/null 2>&1; then
@@ -60,10 +60,10 @@ fi
 
 # 项目基线：项目按哪一版接入（templates/BASELINE.md）
 BASE_CUR="$(cat "$(dirname "$0")/../templates/melon-baseline" 2>/dev/null || echo v1)"
-echo "▸ 项目基线（当前 $BASE_CUR）"
+echo "▸ 项目基线（当前 ${BASE_CUR}）"
 if [[ -f "$P/.melon-baseline" ]]; then
   BASE_PRJ="$(tr -d '[:space:]' < "$P/.melon-baseline")"
-  [[ "$BASE_PRJ" == "$BASE_CUR" ]] && ok "按基线 $BASE_PRJ 接入" || tip "按基线 $BASE_PRJ 接入，当前是 $BASE_CUR：按 templates/BASELINE.md「变更」跟进后改 .melon-baseline"
+  [[ "$BASE_PRJ" == "$BASE_CUR" ]] && ok "按基线 $BASE_PRJ 接入" || tip "按基线 $BASE_PRJ 接入，当前是 ${BASE_CUR}：按 templates/BASELINE.md「变更」跟进后改 .melon-baseline"
 else
   tip "没有 .melon-baseline：还没对照项目基线（templates/BASELINE.md）接入"
 fi
@@ -123,10 +123,10 @@ else
   n="$(awk '/^services:/{s=1;next} /^[^ #]/{s=0} s&&/^  [A-Za-z0-9_.-]+:/{c++} END{print c+0}' "$C")"
   for k in mem_limit healthcheck; do
     m="$(grep -cE "^\s+$k:" "$C")"
-    (( m >= n )) && ok "$k（$m/$n）" || bad "$k 只有 $m/$n 个服务配置"
+    (( m >= n )) && ok "${k}（$m/${n}）" || bad "$k 只有 $m/$n 个服务配置"
   done
   m="$(grep -cE '^\s+restart:\s*unless-stopped' "$C")"
-  (( m >= n )) && ok "restart: unless-stopped（$m/$n）" || bad "restart: unless-stopped 只有 $m/$n"
+  (( m >= n )) && ok "restart: unless-stopped（$m/${n}）" || bad "restart: unless-stopped 只有 $m/$n"
   open="$(grep -nE '^\s+-\s*"?([0-9]+:)?[0-9]+:[0-9]+' "$C" | grep -vE '127\.0\.0\.1|\[::1\]' || true)"
   [[ -z "$open" ]] && ok "端口只绑 127.0.0.1" || { bad "端口对外暴露："; sed 's/^/      /' <<<"$open"; }
   grep -qE '^\s+env_file:' "$C" && ok "用 env_file 加载配置" || tip "没有 env_file；若依赖 --env-file 插值，必须写进注册表 deploy.up"
@@ -154,7 +154,7 @@ else
 
   echo "▸ 注册"
   if [[ ! -d "$OPS/registry/services" ]]; then
-    tip "找不到 ops 仓库（$OPS），无法核对注册"
+    tip "找不到 ops 仓库（${OPS}），无法核对注册"
   elif [[ -f "$OPS/registry/services/$NAME.yaml" ]]; then
     R="$OPS/registry/services/$NAME.yaml"
     val() { awk -v k="$1" '$1==k":"{sub(/^[^:]*:[ ]*/,"");sub(/[ ]*#.*/,"");print;exit}' "$R"; }
@@ -170,7 +170,7 @@ else
       [[ "$wi" != "$site" && "$wi" != "$fo" ]] || bad "裁判站点必须是主、备之外的第三站点（§4.3）"
       pair="$(grep -E "primary:\s*$site\b" "$OPS/registry/sites.yaml" | head -1)"
       if [[ -n "$pair" ]]; then
-        [[ "$pair" =~ standby:\ *$fo[\ ,}] && "$pair" =~ witness:\ *$wi[\ ,}] ]] && ok "主·备·裁判与 standby_pairs 一致（$site→$fo，裁判 $wi）" \
+        [[ "$pair" =~ standby:\ *$fo[\ ,}] && "$pair" =~ witness:\ *$wi[\ ,}] ]] && ok "主·备·裁判与 standby_pairs 一致（${site}→${fo}，裁判 ${wi}）" \
           || bad "主·备·裁判与 sites.yaml standby_pairs 不一致：$pair"
       else
         bad "sites.yaml 的 standby_pairs 里没有 primary: $site"
