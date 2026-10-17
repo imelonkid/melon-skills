@@ -152,6 +152,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | 服务端 | `server-vX.Y.Z` | 镜像，「发布服务端」表单（`tag-prefix: server-v`） | 「回滚服务端」表单或 `melon rollback`，秒级 |
 | 网页界面 | 随服务端 | 服务端在 `/app/` 提供，**界面与服务端同版本** | 跟着服务端回滚 |
 | 桌面（Electron） | `desktop-vX.Y.Z` | `scripts/release-desktop.sh`：从 tag 构建 dmg → 下载站 `/download/desktop/`（`latest.json` 最后上传）→ GitHub Release 存档 | 装出去收不回来：修复后发 patch |
+| 微信小程序 | `mp-vX.Y.Z` | 线上「发布小程序」（模板 `release-mp.yml` + `release-mp.sh`）：从 tag 构建 → 经部署入口在固定 IP 主机用 miniprogram-ci 上传为体验版 → 微信后台人工提审、全量 | 微信后台「版本回退」到上一版；否则发 patch |
 | 鸿蒙 | `harmony-vX.Y.Z` | `scripts/release-harmony.sh`：版本号与签名**构建时注入**（不改源码）→ GitHub Release → AGC | 应用市场不能回滚，只能发更高版本 |
 
 规则：

@@ -39,6 +39,22 @@
 
 在「服务」基础上加 `templates/multi-end/`：各端独立 tag（`server-v` / `desktop-v` / `harmony-v`），网页界面由服务端提供，`/api/health` 带 `minClient`，客户端发布脚本共用 `lib-release.sh`。细则见 `SKILL.md`「多端项目」。
 
+### 小程序端（多端项目里的一端，2026-10-15）
+
+适用：服务端 + 微信小程序（uni-app 等）同一仓库，如 yuxian。小程序装在用户手机上、要过微信审核、收不回来，所以和服务端分开发布。模板 `templates/multi-end/release-mp.sh`、`release-mp.yml`。
+
+| 项 | 要求 |
+|---|---|
+| 目录与 tag | `apps/miniapp`；tag `mp-vX.Y.Z`，与 `server-v` 各自独立 |
+| 发布 | GitHub「发布小程序」→ melon-ci `mp-release@v2`：门禁（发布窗口、main 的 CI 全绿）→ 打 tag → 从 tag 构建 → **经部署入口在固定 IP 的主机上上传为体验版**（`deploy-agent mp-upload`，用 `miniprogram-ci`，机器人号固定）→ GitHub Release 记录版本说明 |
+| 上传密钥 | 微信「代码上传密钥」只放在上传主机（运维仓库登记，root 所有、部署入口可读），**不进 GitHub**；微信后台开 IP 白名单，只放上传主机的 IP |
+| 提审与上线 | 微信没有提审接口：体验版测过后，在微信后台提审、审核通过后全量发布（人工，记在发布说明里） |
+| 回滚 | 微信后台「版本回退」（只能回到上一个线上版本）；不行就修复后发 patch |
+| 版本号 | 构建时注入（`VITE_APP_VERSION` = tag 去掉前缀），不改源码；上传时 `version` 同 tag，`desc` 是版本说明 |
+| 环境 | 接口域名等按构建模式注入（`.env.production` 只放非秘密的公开地址）；**小程序代码里不放任何密钥**（AppSecret、商户密钥只在服务端） |
+| 兼容 | 服务端 `/api/health` 带 `minClient.mp`；小程序启动时比对，低于就用 `wx.getUpdateManager` 强制更新。服务端至少兼容上一个小程序版本，新小程序全量后才提高 `minClient.mp` |
+| 上线准入 | 合法域名（request / uploadFile / downloadFile）只配 HTTPS 正式域名；隐私保护指引与实际收集的信息一致；类目、备案、微信认证（`docs/` 里一张清单） |
+
 ## 桌面应用（独立客户端，没有自己的服务端）
 
 适用：只有桌面端、靠别的平台接口工作的客户端（如内网接入客户端 Vine）。和服务有自己的发布方式；与「多端」里的桌面端区别是：没有服务端下载站，版本清单也放对象存储。模板在 `templates/desktop/`。
@@ -61,6 +77,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v2 增补**（2026-10-15）：多端里新增「小程序端」（`templates/multi-end/release-mp.*`，melon-ci `mp-release`，部署入口 `mp-upload`）。不影响已有项目
 
 - **v2 增补**（2026-10-15）：新增「桌面应用」类型（`templates/desktop/`，melon-ci `desktop-release` 的 `manifest: oss`）。只是加了一类项目，已有项目不用跟进，不升版本号
 
