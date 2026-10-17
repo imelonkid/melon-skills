@@ -39,7 +39,12 @@ else
 
   # 已跟踪的敏感文件
   # 数据目录按规范只认仓库根与 deploy/ 下的 data/（源码里叫 data 的包不算）
-  leaked="$(git -C "$P" ls-files | grep -Ei '(^|/)\.env(\.[^/]*)?$|\.pem$|\.key$|\.p12$|(^|/)id_(rsa|ed25519)|\.(db|sqlite3?)$|^(deploy/)?data/' | grep -Ev '(^|/)\.env(\.[^/]+)?\.example$' || true)"
+  leaked="$(git -C "$P" ls-files | grep -Ei '(^|/)\.env(\.[^/]*)?$|\.pem$|\.key$|\.p12$|(^|/)id_(rsa|ed25519)|\.(db|sqlite3?)$|^(deploy/)?data/' | grep -Ev '(^|/)\.env(\.[^/]+)?\.example$' | grep -Ev '^apps/miniapp/\.env\.(development|production|test)$' || true)"
+  # 小程序端的构建模式文件（基线「小程序端」）允许进 git，但只能放公开地址与开关：变量名像密钥的一律算泄露
+  for mf in $(git -C "$P" ls-files | grep -E '^apps/miniapp/\.env\.(development|production|test)$'); do
+    if grep -qiE '^[[:space:]]*[A-Z_]*(SECRET|KEY|TOKEN|PASSWORD|PASSWD|PRIVATE)[A-Z_]*=' "$P/$mf" 2>/dev/null; then bad "$mf 里有像密钥的变量（小程序不放任何密钥）"
+    else ok "$mf 只放公开配置（小程序构建模式文件）"; fi
+  done
   [[ -z "$leaked" ]] && ok "没有跟踪密钥 / 数据文件" || { bad "以下文件不该进 git（已在历史里的需用户决定是否清理并轮换密钥）："; sed 's/^/      /' <<<"$leaked"; }
   git -C "$P" check-ignore -q --no-index .env || bad ".gitignore 没有忽略 .env"
   # 鸿蒙签名：仓库里的 build-profile.json5 不能带 signingConfigs 内容
