@@ -206,6 +206,8 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 
 注意：用 `GITHUB_TOKEN` 推的 tag 不会触发其他流水线，所以发布是「门禁 → 打 tag → 构建 → 部署」在同一条流水线里接力；表单要显式授予权限（`contents: write, checks: read, deployments: write`），可复用流水线不能自己提权。
 
+5. **README「GitHub production 环境」**：上面每写入一项变量或 Secret，就在这张表里记一行（用途、对应运维侧的哪条登记、谁写入）——GitHub 上没有备注，只有这里说得清。
+
 ### 5. 注册（服务与静态站）
 
 在 ops 仓库新建 `registry/services/<名>.yaml`，以 `templates/service.yaml` 为底，逐字段对照 `_schema.yaml`：

@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | git + GitHub（默认私有，`main`，提交信息 `<类型>(<范围>): <中文>`） | ✓ | ✓ | ✓ | §5.1 |
 | `.gitignore`（`templates/gitignore`）：`.env`、`data/`、数据库、私钥不进 git | ✓ | ✓ | ✓ | §5.4、§5.5 |
-| `README.md`（`templates/README.md`，含上线准入） | ✓ | ✓ | ✓ | — |
+| `README.md`（`templates/README.md`，含上线准入、GitHub production 环境清单） | ✓ | ✓ | ✓ | — |
 | `CLAUDE.md`（`templates/CLAUDE.md`）且有「边界（强制）」 | ✓ | ✓ | ✓ | — |
 | `.melon-baseline`（`templates/melon-baseline`） | ✓ | ✓ | ✓ | — |
 | `deploy/Dockerfile`（`stacks/<栈>/Dockerfile`）：钉版本、`APP_VERSION` 烘进镜像 | ✓ | ✓ | | §5.1 |
@@ -77,6 +77,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v2 增补**（2026-10-17）：README 模板加「GitHub production 环境」清单（每个变量 / Secret 的用途、对应运维侧哪条登记、谁写入）；GitHub 上没有备注字段。已有项目按实际情况补一张
 
 - **v2 增补**（2026-10-15）：多端里新增「小程序端」（`templates/multi-end/release-mp.*`，melon-ci `mp-release`，部署入口 `mp-upload`）。不影响已有项目
 

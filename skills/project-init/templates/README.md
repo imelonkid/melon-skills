@@ -22,6 +22,20 @@ melon rollback __NAME__        # 切回上一次上线前的版本（服务器�
 pbpaste | melon config __NAME__  # 下发 .env（来自 1Password）
 ```
 
+## GitHub production 环境
+
+发布流水线只在 production 环境里拿得到下面这些值（环境只允许 `main`）。GitHub 上的变量和 Secret 没有备注，**用途和对应关系只记在这里**：增删改任何一项都同步改这张表。Secret 的值写进去就读不出来，丢了只能重新生成。
+
+| 名字 | 类型 | 用途 | 对应运维侧（`$OPS_REPO`） | 谁写入 |
+|---|---|---|---|---|
+| `DEPLOY_HOST` | 变量 | 部署入口：`deploy@<主机 IP>` | `agent/services/<主机>/__NAME__.conf` | 接入时配置 |
+| `DEPLOY_KNOWN_HOSTS` | 变量 | 部署主机的 SSH 主机公钥（防中间人；和本机已信任的核对过再写） | 同上 | 接入时配置 |
+| `DEPLOY_SSH_KEY` | Secret | 流水线连部署入口的钥匙，只能操作 `__NAME__` | `agent/authorized/ci-__NAME__.pub` | 接入时生成，本地不留 |
+| `ACR_REGISTRY`、`ACR_USERNAME` | 变量 | 镜像仓库地址与推送账号 | — | 接入时配置 |
+| `ACR_PASSWORD` | Secret | 镜像仓库推送密码（1Password「阿里云 acr 读写子账号」的 Registry 密码） | — | 用户本人 |
+
+查看：仓库 Settings → Environments → production，或 `gh variable list --env production` / `gh secret list --env production`（只有名字）。
+
 ## 上线准入（运维规范 §9.2）
 
 - [ ] 代码在 GitHub，线上版本是一个 tag（`melon status __NAME__`）
