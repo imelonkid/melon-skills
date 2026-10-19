@@ -20,10 +20,12 @@
 | **发布只在线上**：GitHub「发布 / 回滚 / 状态」表单（`templates/workflows/`）或门户；**项目里没有部署脚本**。应急用运维终端的 `melon status / rollback / config`（运维仓库 `workstation/bin/melon`，不构建、不产生新版本） | ✓ | ✓ | | §5.1、§9.3 |
 | `scripts/ci-test.sh`（`stacks/<栈>/ci-test.sh`）：不碰外网和真实数据，含 /health 冒烟 | ✓ | ✓ | 有测试就要 | §9 |
 | `.github/workflows/`（`templates/workflows/`）：`ci`（melon-ci pr-check）、`release`、`rollback`、`status` | ✓ | ✓ | `ci` | §9.3 |
-| **镜像必须进镜像仓库**：CI 构建 → 推 ACR → 主机部署入口按摘要拉取（melon-ci `@v2` 没配就失败，不再经 SSH 上传） | ✓ | ✓ | | §5.1 |
+| **镜像必须进镜像仓库**：CI 构建 → 推镜像仓库（用哪家是平台事实，见运维仓库 `registry/sites.yaml`）→ 节点部署入口按摘要拉取（melon-ci `@v2` 没配就失败，不再经 SSH 上传） | ✓ | ✓ | | §5.1 |
 | GitHub 仓库设置（`templates/github/settings.json`，`scripts/github-apply.sh` 应用 / `--check` 核对）：分支保护、合并方式、production 环境 | ✓ | ✓ | | §9.3 |
 | 注册表 `registry/services/<名>.yaml`（字段以 `_schema.yaml` 为准） | ✓ | ✓ | | §1、§9.1 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
+| **第三方镜像**（数据库、缓存等）：也从镜像仓库拉，写 `<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`。先在运维仓库 `registry/mirror-images.txt` 登记，「同步第三方镜像」原样复制（摘要不变）。**不直接用 Docker Hub**：国内节点拉不动，旧摘要会被回收，灾备重建会失败 | ✓ | ✓ | | §5.1、§5.2 |
+
 
 ## 技术栈（`templates/stacks/`）
 
@@ -77,6 +79,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v2 增补**（2026-10-19）：**第三方镜像也必须来自镜像仓库**（钉版本 + 摘要，登记在运维仓库 `registry/mirror-images.txt`）；`check.sh` 拒绝 Docker Hub 镜像。基线文字不写具体云（「镜像仓库」「对象存储」，选型在运维仓库 `sites.yaml`）。现有项目没有第三方镜像的不用跟进；有的按上面改 compose
 
 - **v2 增补**（2026-10-17）：README 模板加「GitHub production 环境」清单（每个变量 / Secret 的用途、对应运维侧哪条登记、谁写入）；GitHub 上没有备注字段。已有项目按实际情况补一张
 

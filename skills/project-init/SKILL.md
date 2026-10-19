@@ -16,7 +16,7 @@ description: 按 melonkid 多云运维规范（melon-ops）初始化项目。用
 | 规范 | `docs/01-standard.md` | 数据分级 §2、灾备等级 §3、可重建性 §5、备份 §7、可观测 §8、准入与变更 §9 |
 | 站点 | `registry/sites.yaml` | 每个站点的 `purpose` / `roles` / `icp_access`；`standby_pairs` |
 | 服务清单字段 | `registry/services/_schema.yaml` + 同目录现有服务 | 注册表怎么写 |
-| 主机基线 | `registry/baseline.toml` | 目标主机的 Docker / Compose 版本、日志轮转、cgroup |
+| 节点基线 | `registry/baseline.toml` | 目标主机的 Docker / Compose 版本、日志轮转、cgroup |
 | 部署新服务清单 | `docs/04-runbook.md`「部署新服务」 | 上线时还要改哪些地方 |
 
 ```bash
@@ -104,8 +104,8 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - 端口只绑 `127.0.0.1`，对外统一经反向代理走 HTTPS；**不开新的安全组端口**（§6.5）。
 - 持久化数据只在 `./data/`，服务器上即 `/opt/<名>/data/`；不在里面堆手工 `.bak`（§5.5）。
 - 配置用服务内的 `env_file: .env`，**不靠 `--env-file` 插值**——后者不进容器标签，灾备重建会漏（真实踩过）。
-- **不写 `logging:`**：日志轮转由主机基线统一配置（json-file 10m × 3）。
-- 第三方镜像**钉版本**（最好钉 digest），不用 `latest`。
+- **不写 `logging:`**：日志轮转由节点基线统一配置（json-file 10m × 3）。
+- 第三方镜像（数据库、缓存等）**也从镜像仓库拉**：`<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`，先在运维仓库 `registry/mirror-images.txt` 登记并同步；不用 `latest`，**不直接用 Docker Hub**（国内拉不动、旧摘要会被回收）。
 - 对象存储走 **S3 兼容接口**，不用 `oss2` 等厂商专有 SDK（§5.8）；做不到写进 `known_gaps`。
 - compose 语法不超过基线里最低的 Compose 版本（`baseline.toml` 的 `compose_min`）。
 
@@ -200,9 +200,9 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 
 1. **仓库设置按基线应用**：`scripts/github-apply.sh imelonkid/<名>`（定义在 `templates/github/settings.json`：main 必须走 PR、四项检查全绿、管理员也受约束、线性历史、只允许 squash、production 环境只允许 main）；`--check` 只核对。**不要从别的项目抄设置**。
 2. **production 环境的变量与密钥**（环境本身由上一步建好）：环境变量 `DEPLOY_HOST`（`deploy@<IP>`）、`DEPLOY_KNOWN_HOSTS`（`ssh-keyscan -t ed25519 <IP>`）。
-   **镜像仓库（必需，项目基线 v1）**：环境变量 `ACR_REGISTRY`（实例专属域名）、`ACR_USERNAME`，环境 Secret `ACR_PASSWORD`（用户本人 `gh secret set … --env production` 写入）；ACR 里建好 `<命名空间>/<服务>` 私有仓库；主机上 deploy 用户 `docker login` 一次；服务 conf 写 `REGISTRY=<域名>/<命名空间>`。melon-ci `@v2` 没配镜像仓库直接失败——**所有镜像都进镜像仓库，不经 SSH 上传**（从 GitHub 海外传国内实测 100MB / 50 分钟）。
+   **镜像仓库（必需，项目基线 v1；变量名沿用 melon-ci 的 `ACR_*`，选型见运维仓库 `sites.yaml`）**：环境变量 `ACR_REGISTRY`（实例专属域名）、`ACR_USERNAME`，环境 Secret `ACR_PASSWORD`（用户本人 `gh secret set … --env production` 写入）；ACR 里建好 `<命名空间>/<服务>` 私有仓库；主机上 deploy 用户 `docker login` 一次；服务 conf 写 `REGISTRY=<域名>/<命名空间>`。melon-ci `@v2` 没配镜像仓库直接失败——**所有镜像都进镜像仓库，不经 SSH 上传**（从 GitHub 海外传国内实测 100MB / 50 分钟）。
 3. **CI 部署钥匙**：本机生成 ed25519 → 私钥 `gh secret set DEPLOY_SSH_KEY --env production < 私钥` 后立即删除本地文件（不显示、不进对话）→ 公钥存为运维仓库 `agent/authorized/ci-<服务>.pub`（入口自动限定 `--only <服务>`）→ `agent/install.sh <主机>`。
-4. 主机上登记服务：`agent/services/<主机>/<服务>.conf` → `agent/install.sh <主机>`（会生成只读部署密钥并登记到仓库）。
+4. 节点上登记服务：`agent/services/<节点>/<服务>.conf` → `agent/install.sh <节点>`（生成只读部署密钥并登记到仓库，最后用部署钥匙跑 `doctor` 自检）。节点 id 是 `<站点>-<序号>`（如 `ali-1`），节点要先通过运维仓库 `baseline/check.py`。
 
 注意：用 `GITHUB_TOKEN` 推的 tag 不会触发其他流水线，所以发布是「门禁 → 打 tag → 构建 → 部署」在同一条流水线里接力；表单要显式授予权限（`contents: write, checks: read, deployments: write`），可复用流水线不能自己提权。
 

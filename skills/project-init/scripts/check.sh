@@ -138,9 +138,17 @@ else
   grep -qE '^\s+-\s*\./data[:/]' "$C" && ok "数据挂载 ./data" || tip "没有挂载 ./data（无状态服务可忽略）"
   grep -rqsE '^\s*(import oss2|from oss2)|require\(.ali-oss.\)|from .ali-oss.' "$P" --include='*.py' --include='*.js' --include='*.ts' --exclude-dir=node_modules \
     && tip "用了厂商专有对象存储 SDK，应改 S3 兼容接口或写进 known_gaps（§5.8）" || true
-  grep -qE '^\s+logging:' "$C" && tip "compose 里写了 logging:，日志轮转应交给主机基线" || true
-  unpinned="$(grep -E '^\s+image:' "$C" | sed -E 's/^\s+image:\s*//; s/["'"'"']//g; s/\s*#.*//' | grep -vE "^$NAME:" | grep -vE ':[^/]+$|@sha256:' ; grep -E '^\s+image:.*:latest' "$C" | sed -E 's/^\s+image:\s*//')"
-  [[ -z "$unpinned" ]] && ok "第三方镜像都钉了版本" || { bad "镜像没钉版本："; sed 's/^/      /' <<<"$unpinned"; }
+  grep -qE '^\s+logging:' "$C" && tip "compose 里写了 logging:，日志轮转应交给节点基线" || true
+  # 镜像：应用自己的镜像是部署入口打的本地标签 <名>:prod；其余（数据库、缓存等第三方）必须来自镜像仓库并钉版本 + 摘要：
+  #   <镜像仓库>/<命名空间>/<名>:<版本>@sha256:…（运维仓库 registry/mirror-images.txt 同步）。
+  #   不许直接用 Docker Hub：国内节点拉不动，旧摘要还会被回收，灾备重建会失败
+  imgs="$(grep -E '^\s+image:' "$C" | sed -E 's/^[[:space:]]+image:[[:space:]]*//; s/["'"'"']//g; s/[[:space:]]*#.*//; s/[[:space:]]+$//')"
+  third="$(grep -vE '^[a-z0-9][a-z0-9._-]*:prod$' <<<"$imgs" | grep . || true)"
+  offreg="$( { grep -vE '^[a-z0-9-]+(\.[a-z0-9-]+)+(:[0-9]+)?/[a-z0-9._/-]+:[A-Za-z0-9._-]+@sha256:[a-f0-9]{64}$' <<<"$third"
+              grep -E '^(docker\.io|index\.docker\.io|registry-1\.docker\.io)/' <<<"$third"; } | grep . | sort -u || true)"
+  if [[ -z "$third" ]]; then ok "没有第三方镜像"
+  elif [[ -z "$offreg" ]]; then ok "第三方镜像都来自镜像仓库，钉了版本与摘要"
+  else bad "第三方镜像要来自镜像仓库并钉版本 + 摘要（<仓库>/<命名空间>/<名>:<版本>@sha256:…，先登记到运维仓库 registry/mirror-images.txt）："; sed 's/^/      /' <<<"$offreg"; fi
   [[ -f "$P/.env.example" ]] && { grep -q OTEL_ "$P/.env.example" && ok ".env.example 含 OTel 配置" || tip ".env.example 没有 OTEL_*（§8 埋点）"; }
   grep -rqsE '["'"'"'/]health["'"'"' ]' "$P" --include='*.py' --include='*.js' --include='*.ts' --include='*.go' --include='*.rs' --include='*.java' --exclude-dir=node_modules --exclude-dir=deploy \
     && ok "代码里有 /health" || tip "代码里没找到 /health 接口"
