@@ -207,6 +207,7 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 注意：用 `GITHUB_TOKEN` 推的 tag 不会触发其他流水线，所以发布是「门禁 → 打 tag → 构建 → 部署」在同一条流水线里接力；表单要显式授予权限（`contents: write, checks: read, deployments: write`），可复用流水线不能自己提权。
 
 5. **README「GitHub production 环境」**：上面每写入一项变量或 Secret，就在这张表里记一行（用途、对应运维侧的哪条登记、谁写入）——GitHub 上没有备注，只有这里说得清。
+6. **登记到门户**（每一端的发布流水线都要，服务端、桌面端、小程序端一样）：运维仓库 `portal/config.json` 的 `services` 加一条——`ends` 里每端写 `prefix`、`release` / `rollback` 表单文件名、`channel`、能探到线上版本就写 `online`，`pipelines` 按通用发布流水线绑定任务名（见同文件已有条目）；再加 `ci`。门户的 GitHub 令牌（细粒度，`melon-portal`）的 Repository access 要包含这个仓库。改完 `portal/push.sh`，不用重启门户。**只配了 GitHub 表单、门户里看不到 = 没接完**。
 
 ### 5. 注册（服务与静态站）
 
