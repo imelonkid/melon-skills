@@ -111,6 +111,8 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 #### 可观测（§8）
 
+- **日志与客户端错误上报用公共包 `@imelonkid/common`**（Node 服务端 `/server`、运营后台 / 网页 `/browser`、小程序 `/uniapp`），不在项目里各写一遍；接入步骤见该包 README。规范原文：运维仓库 `docs/11-logging.md`。
+
 - 日志：JSON 到 stdout，带 `trace_id`；**密码、token、手机号必须脱敏**。
 - 埋点：OpenTelemetry SDK。`OTEL_SERVICE_NAME` 与 `deployment.environment` 由 compose 注入；`service.version` 在代码初始化 SDK 时取 `APP_VERSION`（= tag，烘在镜像里，灾备重建也不会丢）；`cloud.provider` 由各主机的 Collector 补（同一份 compose 在主、备站点都要能跑，不能写死厂商）；`OTEL_EXPORTER_OTLP_ENDPOINT` 为空时 SDK 不导出，等运维中心的 Collector 就位再填。
 - 业务指标命名 `<服务>_<领域>_<事件>_total`；**标签禁止高基数值**（user_id、URL 原文）。
