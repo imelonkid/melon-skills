@@ -50,6 +50,7 @@
     <tbody>
       <tr><td>基线定义（按项目类型逐项、对应规范条目、变更记录）</td><td><code>templates/BASELINE.md</code>，当前 v3</td></tr>
       <tr><td>技术架构与选型（强制）</td><td>模块化单体、一个产品一个仓库；TypeScript + NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Vite + Element Plus；小程序 uni-app；原生只做鸿蒙 ArkTS；桌面 Electron；偏离默认在 README「技术选型例外」写明</td></tr>
+      <tr><td>数据库部署</td><td>MySQL 默认自建：每个节点一个共享实例，每个项目独立库与账号；有真实收入、热备维护不过来或内存不够时再改用云数据库</td></tr>
       <tr><td>通用模板</td><td><code>templates/</code>：README、CLAUDE.md、gitignore、env.example、生产 compose、注册表条目、流水线表单</td></tr>
       <tr><td>技术栈模板</td><td><code>templates/stacks/{python,node,static}/</code>：Dockerfile、健康检查示例、ci-test.sh；node 另有 <code>npmrc</code>（私有公共包 <code>@imelonkid/common</code>）</td></tr>
       <tr><td>镜像仓库（必需）</td><td>所有镜像经 CI 推到镜像仓库（ACR），主机部署入口按摘要拉取；流水线表单调用 melon-ci <code>@v2</code>，没配镜像仓库直接失败</td></tr>

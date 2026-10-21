@@ -69,6 +69,17 @@
 | 测试 | 服务端 Jest（NestJS 默认）；前端 Vitest；端到端 Playwright | — |
 | 代码风格 | ESLint + Prettier（各端同一份配置） | — |
 
+### 数据库部署（MySQL）
+
+| 项 | 标准 |
+|---|---|
+| 默认 | **自建**：Docker 跑官方 `mysql:8` 镜像（经镜像仓库、钉摘要），不额外购买云数据库 |
+| 实例 | **每个节点一个共享实例**，每个项目**独立的库 + 独立账号**（只授权自己的库；备份另建只读账号）。不按项目各起一个 MySQL——每个实例约 400MB 内存，节点都是 2C / 3.5G～7.8G 的小机器 |
+| 共享实例的位置 | 节点上的平台组件（运维仓库管理，像日志采集一样按节点安装），只在节点内网 / wg 上监听，不开公网端口；项目 compose 只写连接串，不再自带 mysql 服务 |
+| 过渡 | 节点上只有一个项目用 MySQL 时，允许暂时放在该项目自己的 compose 里（现状：yuxian 在 ali-1）；**第二个项目上同一节点前**，先迁成共享实例 |
+| 备份与灾备 | 按规范 §7：只读账号 `mysqldump --single-transaction` 定时备份进异地对象存储；T0 / L2 用 binlog 复制到备站点；定期做恢复演练 |
+| 何时改用云数据库（阿里云 RDS / 腾讯云 CDB） | 满足任一条：① 有真实用户与收入，丢数据的代价超过云数据库月费；② L2 热备（binlog 复制到备站点）自己维护跟不上；③ 节点内存不够。改用云数据库只换连接串（Prisma 不变），并在注册表与运维仓库登记 |
+
 ### 例外与迁移
 
 - **例外**：上表没有、或要用「默认 / 允许」以外的方案，在项目 README「技术选型例外」写明：用什么、为什么、谁同意的（用户本人）。没有例外记录就按默认。
@@ -129,7 +140,7 @@
 
 ## 变更
 
-- **v3**（2026-10-21）：新增「**技术架构与选型（强制）**」——模块化单体、一个产品一个仓库（pnpm workspace）、REST `/api/v1` 统一响应体；TypeScript + NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Vite + Element Plus；小程序 uni-app；原生只做鸿蒙 ArkTS；桌面 Electron；对象存储 S3 兼容 SDK；Jest / Vitest / Playwright；ESLint + Prettier。默认之外的写 README「技术选型例外」。数据库默认由「没理由就 SQLite」改为 MySQL 8（SQLite 只用于客户端本地与单机小工具）。`check.sh` 新增 △（服务端框架、运营后台前端、Node 版本）。已有项目：不合规项写进注册表 `known_gaps`（现状 → 目标），大改时迁；改完把 `.melon-baseline` 改为 v3
+- **v3**（2026-10-21）：新增「**技术架构与选型（强制）**」——模块化单体、一个产品一个仓库（pnpm workspace）、REST `/api/v1` 统一响应体；TypeScript + NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Vite + Element Plus；小程序 uni-app；原生只做鸿蒙 ArkTS；桌面 Electron；对象存储 S3 兼容 SDK；Jest / Vitest / Playwright；ESLint + Prettier。默认之外的写 README「技术选型例外」。数据库默认由「没理由就 SQLite」改为 MySQL 8（SQLite 只用于客户端本地与单机小工具）；MySQL **默认自建、每节点一个共享实例、每项目独立库与账号**，满足条件再改用云数据库（见「数据库部署」）。`check.sh` 新增 △（服务端框架、运营后台前端、Node 版本）。已有项目：不合规项写进注册表 `known_gaps`（现状 → 目标），大改时迁；改完把 `.melon-baseline` 改为 v3
 
 - **v2 增补**（2026-10-21）：对齐已上线的平台事实——发布 / 回滚只在内网门户上点（GitHub 表单兜底），版本号 patch / minor / major 口径；门户按端类型选流水线（`server-release` 用 `/health` 的 `version` = tag 验收、`desktop-release`、`mp-release` 两个人工确认）；日志规范要点与公共包 `@imelonkid/common` 的接入（`templates/stacks/node/` 加 `npmrc`、Dockerfile 挂 `npm_token`，发布表单加 `packages: read`）；运营后台身份头加 `X-Melon-Role`；第三方镜像摘要以同步结果为准；**用户上传文件一律对象存储**；**PR 一律以 main 为目标**；Node 库用 melon-ci `npm-release`。`check.sh` 新增几条 △（Node 端是否接公共包及其 `.npmrc` / 读包令牌、小程序端发布表单）。不升版本号；已有项目：按 △ 补，用户上传还存在数据目录的写进 `known_gaps` 并迁到对象存储
 

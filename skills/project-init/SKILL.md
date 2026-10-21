@@ -59,7 +59,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 - **主站点**：读 `sites.yaml` 每个站点的 `purpose` 和 `roles`。只放 `roles` 含 `compute` 的站点；`purpose` 写着某业务"专用"的站点不放其他项目；`roles` 是 `ops` / `standby` 的站点**不放新业务**（§4.4 监控独立）。
 - **备站点与裁判**：从 `standby_pairs` 里 `primary` = 主站点的那一条直接取 `standby` 和 `witness`，不自己发明。
 - **ICP**：主站点和备站点的 `icp_access` 都要是 `true` 才能对外（§4.7）；`pending` 的写进 `known_gaps`。
-- **数据库**：按基线默认 **MySQL 8 + Prisma**（备份用只读账号 `mysqldump --single-transaction`，L2 走 binlog 复制）；SQLite（WAL，Litestream 做 L2）只用于客户端本地存储和单机内部小工具。
+- **数据库**：按基线默认 **MySQL 8 + Prisma**，**自建、用节点上的共享实例，本项目只建自己的库和账号**（节点上还没有共享实例且只有本项目用时，可暂放本项目 compose；见基线「数据库部署」）；备份用只读账号 `mysqldump --single-transaction`，L2 走 binlog 复制；SQLite（WAL，Litestream 做 L2）只用于客户端本地存储和单机内部小工具。
 
 ### 2. 本地目录与 git
 
