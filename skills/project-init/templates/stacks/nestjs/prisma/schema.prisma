@@ -1,0 +1,21 @@
+// 数据模型（项目基线 v3：MySQL 8 + Prisma 7）。
+// 迁移一律向后兼容：先扩展、再收缩（加列 / 加表可以；删列、改类型分两次发布），保证回滚到上一个 tag 还能跑。
+// 表名、列名用 snake_case（@@map / @map），模型与字段用 camelCase。
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// 示例：删掉换成自己的模型
+model Example {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("example")
+}

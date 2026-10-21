@@ -113,7 +113,7 @@
       <tr><td><code>.melon-baseline</code></td><td><code>templates/melon-baseline</code>：记录按哪一版项目基线接入（基线定义 <code>templates/BASELINE.md</code>）</td><td><span class="badge b-n">全部</span></td></tr>
       <tr><td><code>CLAUDE.md</code></td><td><code>templates/CLAUDE.md</code>，含「边界（强制）」、定级与运维约定</td><td><span class="badge b-n">全部</span></td></tr>
       <tr><td><code>deploy/docker-compose.prod.yml</code></td><td><code>templates/docker-compose.prod.yml</code></td><td><span class="badge b-ok">服务</span></td></tr>
-      <tr><td><code>deploy/Dockerfile</code></td><td><code>templates/stacks/&lt;栈&gt;/Dockerfile</code>（python / node / static）：基础镜像钉版本，<code>APP_VERSION</code> 烘进镜像</td><td><span class="badge b-ok">服务</span> <span class="badge b-n">静态站</span></td></tr>
+      <tr><td><code>deploy/Dockerfile</code></td><td><code>templates/stacks/&lt;栈&gt;/Dockerfile</code>（Node 服务 nestjs、python、static）：基础镜像钉版本，<code>APP_VERSION</code> 烘进镜像</td><td><span class="badge b-ok">服务</span> <span class="badge b-n">静态站</span></td></tr>
       <tr><td><code>.env.example</code></td><td><code>templates/env.example</code>，含 OTel 配置</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>.github/workflows/ci.yml</code> · <code>scripts/ci-test.sh</code></td><td><code>templates/workflows/ci.yml</code> · <code>templates/stacks/&lt;栈&gt;/ci-test.sh</code>：PR 检查（melon-ci），含 /health 冒烟</td><td><span class="badge b-ok">服务</span></td></tr>
       <tr><td><code>.github/workflows/{release,rollback,status}.yml</code></td><td><code>templates/workflows/</code>：在 GitHub（手机）上发布、回滚、看线上状态；需 production 环境与分支保护</td><td><span class="badge b-ok">服务</span></td></tr>

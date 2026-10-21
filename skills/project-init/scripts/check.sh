@@ -191,11 +191,11 @@ else
     uses_common=1
     [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && ok "${rel} 依赖 @imelonkid/common ${ver}" || tip "${rel} 的 @imelonkid/common 要钉确切版本（现在是 ${ver}）"
     grep -qs 'npm.pkg.github.com' "$d/.npmrc" "$P/.npmrc" && ok "${rel} 有 .npmrc（@imelonkid → GitHub Packages）" \
-      || tip "${rel} 缺 .npmrc（模板 templates/stacks/node/npmrc：@imelonkid 指向 npm.pkg.github.com，令牌走 NODE_AUTH_TOKEN）"
+      || tip "${rel} 缺 .npmrc（模板 templates/stacks/nestjs/npmrc：@imelonkid 指向 npm.pkg.github.com，令牌走 NODE_AUTH_TOKEN）"
   done
   if (( uses_common )); then
     grep -qs 'id=npm_token' "$P/deploy/Dockerfile" && ok "Dockerfile 用 BuildKit secret npm_token 装私有包" \
-      || tip "deploy/Dockerfile 装依赖没挂 BuildKit secret npm_token（RUN --mount=type=secret,id=npm_token …，见 templates/stacks/node/Dockerfile）"
+      || tip "deploy/Dockerfile 装依赖没挂 BuildKit secret npm_token（RUN --mount=type=secret,id=npm_token …，见 templates/stacks/nestjs/Dockerfile）"
     for w in release release-mp; do
       f="$P/.github/workflows/$w.yml"; [[ -f "$f" ]] || continue
       grep -qE 'packages:[[:space:]]*read' "$f" && ok "$w 表单授予 packages: read" || tip "$w 表单的 permissions 要加 packages: read（读私有包 @imelonkid/*）"

@@ -13,10 +13,10 @@
 | `README.md`（`templates/README.md`，含上线准入、GitHub production 环境清单） | ✓ | ✓ | ✓ | — |
 | `CLAUDE.md`（`templates/CLAUDE.md`）且有「边界（强制）」 | ✓ | ✓ | ✓ | — |
 | `.melon-baseline`（`templates/melon-baseline`） | ✓ | ✓ | ✓ | — |
-| `deploy/Dockerfile`（`stacks/<栈>/Dockerfile`）：钉版本、`APP_VERSION` 烘进镜像 | ✓ | ✓ | | §5.1 |
+| `deploy/Dockerfile`（`stacks/<栈>/Dockerfile`；Node 服务 `stacks/nestjs/`）：钉版本、`APP_VERSION` 烘进镜像 | ✓ | ✓ | | §5.1 |
 | `deploy/docker-compose.prod.yml`（`templates/docker-compose.prod.yml`）：`mem_limit` / `healthcheck` / `restart`、只绑 127.0.0.1、`env_file: .env`、数据只在 `./data` | ✓ | ✓ | | §5.5、§5.6、§6.5 |
 | `.env.example`（`templates/env.example`） | ✓ | 有配置才要 | | §5.4 |
-| 健康检查 `GET /health` → `{"ok", "version"}`，`version` = 本次 tag（`stacks/<栈>/health.*`；静态站在 Caddyfile）。**发布流水线用它验收**：门户 `server-release` 的最后一步探 `/health`，版本 = 本次 tag 且健康、稳定 20 秒才算上线完成 | ✓ | ✓ | | §8、§9.3 |
+| 健康检查 `GET /health` → `{"ok", "version"}`，`version` = 本次 tag（`stacks/nestjs/src/health/`、`stacks/python/health.py`；静态站在 Caddyfile）。**发布流水线用它验收**：门户 `server-release` 的最后一步探 `/health`，版本 = 本次 tag 且健康、稳定 20 秒才算上线完成 | ✓ | ✓ | | §8、§9.3 |
 | **发布与回滚只在内网门户上点**（门户「发布」对话框；GitHub「发布 / 回滚 / 状态」表单 `templates/workflows/` 兜底）；**项目里没有部署脚本**。版本号：只修 bug → patch；有新功能 → minor；不兼容（接口、数据、配置要跟着改）→ major。应急用运维终端的 `melon status / rollback / config`（运维仓库 `workstation/bin/melon`，不构建、不产生新版本） | ✓ | ✓ | | §5.1、§9.3 |
 | `scripts/ci-test.sh`（`stacks/<栈>/ci-test.sh`）：不碰外网和真实数据，含 /health 冒烟 | ✓ | ✓ | 有测试就要 | §9 |
 | `.github/workflows/`（`templates/workflows/`）：`ci`（melon-ci pr-check，自带读私有包的令牌）、`release`、`rollback`、`status` | ✓ | ✓ | `ci`；Node 库另加发布表单（melon-ci `npm-release`，发到 GitHub Packages，`package.json` 的 `version` 固定 `0.0.0`、版本号按 tag 注入） | §9.3 |
@@ -66,8 +66,8 @@
 | 桌面 | **Electron + electron-builder**，界面 Vue 3 + Vite | — |
 | 官网 / 博客 | Astro | 文档站：VitePress |
 | 日志与错误上报 | `@imelonkid/common`（见上表） | Python：按规范自行实现 |
-| 测试 | 服务端 Jest（NestJS 默认）；前端 Vitest；端到端 Playwright | — |
-| 代码风格 | ESLint + Prettier（各端同一份配置） | — |
+| 测试 | **Vitest**（NestJS 12 与 Vite 官方脚手架的默认，各端统一）；浏览器端到端 Playwright | — |
+| 代码检查与格式 | 跟随官方脚手架：服务端 oxlint + Prettier（`nest new` 默认）；Vue 端 ESLint + Prettier（`create-vue` 默认） | — |
 
 ### 数据库部署（MySQL）
 
@@ -92,10 +92,10 @@
 | 栈 | 文件 | 约定 |
 |---|---|---|
 | `python` | `Dockerfile`、`health.py`、`ci-test.sh` | `python:3.13-alpine`；入口 `app/main.py --data /data --port 8080`；只用标准库时不要 requirements.txt |
-| `node` | `Dockerfile`、`health.js`、`ci-test.sh`、`npmrc` | `node:22-alpine` + pnpm 10.32.1（corepack）；入口 `src/server.js`（**待升级为 NestJS + Prisma 骨架**，与上一章对齐）；依赖 `@imelonkid/common`（钉确切版本）：`npmrc` 复制为 `.npmrc`，Dockerfile 安装依赖那一步挂 BuildKit secret `npm_token`（令牌不进镜像层） |
+| `nestjs` | 完整骨架（见目录内 README）：`package.json` + 锁文件、`src/`（`main.ts`、统一响应体与错误码、Prisma、`/health`）、`prisma/`、Vitest、oxlint、Prettier、`Dockerfile`、`scripts/ci-test.sh`、`npmrc` | **Node 服务一律用它**（基线 v3）。TypeScript（ESM）+ Node 22 + NestJS 12 + Prisma 7（MySQL 8）；`node:22-alpine` + pnpm 10.32.1；依赖 `@imelonkid/common`（钉确切版本）；Dockerfile 装依赖挂 BuildKit secret `npm_token`；镜像启动先 `prisma migrate deploy`；CI 测试起临时 MySQL 跑端到端 |
 | `static` | `Dockerfile`、`Caddyfile`、`ci-test.sh` | 构建产物在 `dist/`，Caddy 提供并在 `/health` 返回版本；**静态站也按镜像发布**，与服务同一条 tag 发布 / 回滚路径 |
 
-新增技术栈 = 在 `stacks/` 加一个目录（三件套：Dockerfile、健康检查示例、ci-test.sh），并在本表登记。
+新增技术栈 = 在 `stacks/` 加一个目录（至少：Dockerfile、健康检查、ci-test.sh），并在本表登记。`python` 栈只用于基线允许的场景（AI / 数据类、平台小工具）。
 
 ## 多端（服务端 + 网页 + 桌面 + 手机，同一仓库）
 
@@ -139,6 +139,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-10-21 晚）：`templates/stacks/node`（原生 Node + `src/server.js`）换成 **`templates/stacks/nestjs`**——NestJS 官方脚手架为底的完整骨架（ESM、Vitest、oxlint、Prisma 7 + MySQL、统一响应体与错误码、`/health`、Dockerfile、起临时 MySQL 的 ci-test.sh），已在 node:22 与 MySQL 8.4 上跑通。测试与代码检查跟随官方脚手架：服务端 **Vitest + oxlint**（不是 Jest + ESLint）；`ci.yml` 传 `node-version: "22"`
 
 - **v3**（2026-10-21）：新增「**技术架构与选型（强制）**」——模块化单体、一个产品一个仓库（pnpm workspace）、REST `/api/v1` 统一响应体；TypeScript + NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Vite + Element Plus；小程序 uni-app；原生只做鸿蒙 ArkTS；桌面 Electron；对象存储 S3 兼容 SDK；Jest / Vitest / Playwright；ESLint + Prettier。默认之外的写 README「技术选型例外」。数据库默认由「没理由就 SQLite」改为 MySQL 8（SQLite 只用于客户端本地与单机小工具）；MySQL **默认自建、每节点一个共享实例、每项目独立库与账号**，满足条件再改用云数据库（见「数据库部署」）。`check.sh` 新增 △（服务端框架、运营后台前端、Node 版本）。已有项目：不合规项写进注册表 `known_gaps`（现状 → 目标），大改时迁；改完把 `.melon-baseline` 改为 v3
 

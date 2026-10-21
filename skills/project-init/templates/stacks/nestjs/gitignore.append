@@ -1,0 +1,5 @@
+# NestJS + Prisma（追加到项目 .gitignore）
+dist/
+src/generated/
+*.tsbuildinfo
+coverage/

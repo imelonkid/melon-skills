@@ -9,3 +9,5 @@ on:
 jobs:
   check:
     uses: imelonkid/melon-ci/.github/workflows/pr-check.yml@v2
+    with:
+      node-version: "22"   # 基线 v3：Node 22 LTS（与 Dockerfile 的 node:22-alpine 一致）

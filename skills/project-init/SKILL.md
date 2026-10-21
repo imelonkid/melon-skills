@@ -73,7 +73,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 ### 3. 骨架（按项目基线）
 
-**项目基线**定义在 [`templates/BASELINE.md`](templates/BASELINE.md)：每类项目必须有哪些文件、对应规范哪一条、check.sh 怎么查。**以基线为准，不以任何具体业务项目为样板**；基线缺的东西先补进基线（升版本），再用到项目里。**技术栈与架构按基线「技术架构与选型（强制）」一章选，不各自发挥**；技术栈相关的文件取 `templates/stacks/<栈>/`（python / node / static）。
+**项目基线**定义在 [`templates/BASELINE.md`](templates/BASELINE.md)：每类项目必须有哪些文件、对应规范哪一条、check.sh 怎么查。**以基线为准，不以任何具体业务项目为样板**；基线缺的东西先补进基线（升版本），再用到项目里。**技术栈与架构按基线「技术架构与选型（强制）」一章选，不各自发挥**；技术栈相关的文件取 `templates/stacks/<栈>/`（**Node 服务 `nestjs`**、python、static）。
 
 所有类型：
 
@@ -94,8 +94,8 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | `.env.example` | `templates/env.example` | 全部变量 + 注释，值留空或示例 |
 | `.github/workflows/ci.yml` | `templates/workflows/ci.yml` | 调用 `imelonkid/melon-ci` 的 pr-check：密钥扫描、运维规范、测试、镜像构建 |
 | `scripts/ci-test.sh` | `templates/stacks/<栈>/ci-test.sh` | CI 的测试入口（含 /health 冒烟）：桩服务 + 临时目录，不碰外网和真实数据；依赖版本与 Dockerfile 一致 |
-| `GET /health` | 代码，示例 `templates/stacks/<栈>/health.*` | 200 = 能正常服务；顺带检查数据库连接；返回 `{"ok", "version"}`，`version` 读 `APP_VERSION`（= 本次 tag）——**门户 `server-release` 靠它验收上线**（版本 = 本次 tag 且健康、稳定 20 秒），版本不对就算发布没完成 |
-| `.npmrc` | `templates/stacks/node/npmrc` | Node 项目（含各端 `apps/*`）用公共包 `@imelonkid/common` 时要有：`@imelonkid` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；见「可观测」 |
+| `GET /health` | 代码，NestJS 骨架自带（`stacks/nestjs/src/health/`），Python 示例 `stacks/python/health.py` | 200 = 能正常服务；顺带检查数据库连接；返回 `{"ok", "version"}`，`version` 读 `APP_VERSION`（= 本次 tag）——**门户 `server-release` 靠它验收上线**（版本 = 本次 tag 且健康、稳定 20 秒），版本不对就算发布没完成 |
+| `.npmrc` | `templates/stacks/nestjs/npmrc` | Node 项目（含各端 `apps/*`）用公共包 `@imelonkid/common` 时要有：`@imelonkid` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；见「可观测」 |
 
 **静态站**：**也按镜像发布**（`templates/stacks/static/`：构建 → Caddy 提供，`/health` 返回版本），与服务走同一条 tag 发布 / 回滚路径；构建产物不进 git。线上若有不在 git 里的内容（例如由 Obsidian 同步的文章），挂成数据卷并写进注册表 `assets` 与 `known_gaps`，**不要对干净 checkout 用 `rsync --delete`**。
 
@@ -114,7 +114,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 #### 可观测（§8）
 
 - **日志与客户端错误上报用公共包 `@imelonkid/common`**（Node 服务端 `/server`、运营后台 / 网页 `/browser`、小程序 `/uniapp`），不在项目里各写一遍；接入步骤见该包 README。规范原文：运维仓库 `docs/11-logging.md`；其他技术栈按规范自行实现。
-  - 包在 GitHub Packages（私有）：`package.json` **钉确切版本**（不写 `^` / `~`）；每个用到它的端放 `.npmrc`（`templates/stacks/node/npmrc`），令牌走环境变量 `NODE_AUTH_TOKEN`（本机用有 `read:packages` 的令牌，不写进文件）。
+  - 包在 GitHub Packages（私有）：`package.json` **钉确切版本**（不写 `^` / `~`）；每个用到它的端放 `.npmrc`（`templates/stacks/nestjs/npmrc`），令牌走环境变量 `NODE_AUTH_TOKEN`（本机用有 `read:packages` 的令牌，不写进文件）。
   - Dockerfile 安装依赖那一步：`RUN --mount=type=secret,id=npm_token NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" …`（melon-ci 以 BuildKit secret 传入，不进镜像层；模板已写好）。
   - 发布表单的 `permissions` 加 `packages: read`（模板已写好）；PR 检查 melon-ci `pr-check` 自带读包令牌，不用改。
   - 用户本人在包设置（melon-common 的 Package settings → Manage Actions access）里**授予本仓库读权限**，否则 CI 装不上依赖。
