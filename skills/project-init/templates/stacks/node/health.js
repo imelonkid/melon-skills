@@ -1,5 +1,6 @@
-// 项目基线 v1 · 健康检查示例（Node 内置 http）。
+// 项目基线 v2 · 健康检查示例（Node 内置 http）。
 // GET /health → 200 {"ok":true,"version":APP_VERSION}；依赖不可用时 503 {"ok":false,"error":…}
+// 发布流水线（门户 server-release）用它验收：version = 本次 tag 且健康、稳定 20 秒才算上线完成，所以 version 必须是 tag 原样
 // version 取环境变量 APP_VERSION（镜像构建时由 tag 注入）；只检查能否正常服务，不检查外部服务；不需要登录、不返回配置
 const VERSION = process.env.APP_VERSION || 'dev';
 

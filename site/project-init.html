@@ -50,7 +50,7 @@
     <tbody>
       <tr><td>基线定义（按项目类型逐项、对应规范条目、变更记录）</td><td><code>templates/BASELINE.md</code>，当前 v2</td></tr>
       <tr><td>通用模板</td><td><code>templates/</code>：README、CLAUDE.md、gitignore、env.example、生产 compose、注册表条目、流水线表单</td></tr>
-      <tr><td>技术栈模板</td><td><code>templates/stacks/{python,node,static}/</code>：Dockerfile、健康检查示例、ci-test.sh</td></tr>
+      <tr><td>技术栈模板</td><td><code>templates/stacks/{python,node,static}/</code>：Dockerfile、健康检查示例、ci-test.sh；node 另有 <code>npmrc</code>（私有公共包 <code>@imelonkid/common</code>）</td></tr>
       <tr><td>镜像仓库（必需）</td><td>所有镜像经 CI 推到镜像仓库（ACR），主机部署入口按摘要拉取；流水线表单调用 melon-ci <code>@v2</code>，没配镜像仓库直接失败</td></tr>
       <tr><td>GitHub 仓库设置</td><td><code>templates/github/settings.json</code>：分支保护、合并方式、production 环境；<code>scripts/github-apply.sh &lt;仓库&gt;</code> 应用，<code>--check</code> 核对</td></tr>
       <tr><td>多端</td><td><code>templates/multi-end/</code></td></tr>
@@ -66,7 +66,7 @@
     <div class="pr"><h4>先有 .gitignore 再提交 <span class="badge b-n">§5.4</span></h4><p><code>.env</code>、<code>data/</code>、数据库文件、私钥一律不进 git。</p><div class="why">进了历史就很难清干净。</div></div>
     <div class="pr"><h4>服务必须注册 <span class="badge b-n">§9.1</span></h4><p>不在 <code>registry/services/</code> 里的服务不允许上线。</p><div class="why">备份、探活、灾备都从注册表生成。</div></div>
     <div class="pr"><h4>CLAUDE.md 写明边界</h4><p>每个项目必须有 <code>CLAUDE.md</code>，且有「边界（强制）」一节：负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束。业务项目只写自己的边界；平台项目以运维仓库的项目地图为准。</p><div class="why">越界的改动最难回收：代码、坐标、清单一旦散到别的仓库，就会出现两份不一致的事实。</div></div>
-    <div class="pr"><h4>版本可追溯 <span class="badge b-n">§5.1</span></h4><p>分支 <code>main</code>；发布打 <code>v*</code> 标签；镜像标签取 <code>git describe</code>。</p><div class="why">出事时知道线上跑的是哪一版。</div></div>
+    <div class="pr"><h4>版本可追溯 <span class="badge b-n">§5.1</span></h4><p>分支 <code>main</code>，PR 一律以 <code>main</code> 为目标（不开叠加 PR）；发布打 <code>v*</code> 标签；镜像标签取 <code>git describe</code>。</p><div class="why">出事时知道线上跑的是哪一版。</div></div>
   </div>
   <div class="callout info"><span class="ic">ℹ️</span><p>新仓库<b>默认私有</b>，用户明确说公开才公开。鸿蒙项目：仓库里的 <code>build-profile.json5</code> 是 <code>"signingConfigs": []</code>，本机签名用 <code>git update-index --skip-worktree</code> 留在本机。</p></div>
 </section>
@@ -130,8 +130,9 @@
       <tr><td>数据只在 <code>./data/</code> <span class="badge b-n">§5.5</span></td><td>备份任务按注册表 <code>assets</code> 从这里取</td></tr>
       <tr><td>服务内 <code>env_file: .env</code></td><td><code>--env-file</code> 插值不进容器标签，灾备重建时会漏（真实踩过）</td></tr>
       <tr><td>不写 <code>logging:</code> <span class="badge b-n">§6</span></td><td>日志轮转由主机基线统一配置</td></tr>
-      <tr><td>第三方镜像钉版本</td><td>不用 <code>latest</code>，重建时拿到的就是测过的那一版</td></tr>
+      <tr><td>第三方镜像钉版本 + 摘要</td><td>不用 <code>latest</code>，也从镜像仓库拉（先登记同步，摘要以同步结果为准）；重建时拿到的就是测过的那一版</td></tr>
       <tr><td>对象存储用 S3 兼容接口 <span class="badge b-n">§5.8</span></td><td>主云出事时能切到另一朵云的副本</td></tr>
+      <tr><td>用户上传的文件放对象存储</td><td>头像、图片不存 <code>./data/</code>；子账号只能读写本服务的前缀、没有删除权限</td></tr>
       <tr><td>SQLite 备份只用 <code>sqlite3 .backup</code> <span class="badge b-n">§7</span></td><td>WAL 模式下直接 <code>cp</code> 会拿到不一致的文件</td></tr>
     </tbody>
   </table></div>
@@ -143,7 +144,9 @@
   <div class="tbl"><table>
     <thead><tr><th>项</th><th>约定</th></tr></thead>
     <tbody>
-      <tr><td>日志</td><td>JSON 到 stdout，带 <code>trace_id</code>；密码、token、手机号必须脱敏</td></tr>
+      <tr><td>日志</td><td>stdout 一行一条 JSON（<code>ts</code> / <code>level</code> / <code>service</code> / <code>version</code> / <code>trace_id</code> / <code>event</code> / <code>msg</code>），请求日志一请求一条；密码、token、手机号必须脱敏。Node 服务端、网页、uni-app 用公共包 <code>@imelonkid/common</code></td></tr>
+      <tr><td>追踪号与客户端上报</td><td>请求头 <code>X-Request-Id</code>，错误响应体带 <code>traceId</code>；客户端只报 warn / error，gzip 批量发 <code>/api/v1/client-logs</code></td></tr>
+      <tr><td>运营后台</td><td>只在内网 <code>&lt;服务&gt;.in.melonkid.cn</code>，不做自己的账号密码：凭网关转来的门户身份（<code>X-Melon-*</code>）统一登录</td></tr>
       <tr><td>埋点</td><td>OpenTelemetry SDK；<code>OTEL_SERVICE_NAME</code>、<code>OTEL_RESOURCE_ATTRIBUTES</code>（版本、环境、云厂商）由 compose 注入</td></tr>
       <tr><td>导出</td><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code> 为空 = 不导出；采样在 Collector 做，代码不写死</td></tr>
       <tr><td>业务指标</td><td><code>&lt;服务&gt;_&lt;领域&gt;_&lt;事件&gt;_total</code>；标签禁止 user_id、URL 原文等高基数值</td></tr>
@@ -154,15 +157,15 @@
 
 <section id="release" data-toc="发布与回滚">
   <h2>发布与回滚：一律走 tag，只在线上</h2>
-  <p class="intro">线上版本永远等于某个 git tag。发新版 = 打一个新 tag；回滚 = 上线一个旧 tag。<b>发布只在线上</b>（基线 v2）：GitHub「发布 / 回滚」表单或内网门户；项目里不放部署脚本。GitHub 或门户不可用时，运维终端只做不构建的应急操作。</p>
+  <p class="intro">线上版本永远等于某个 git tag。发新版 = 打一个新 tag；回滚 = 上线一个旧 tag。<b>发布与回滚只在内网门户上点</b>（GitHub「发布 / 回滚」表单兜底）；项目里不放部署脚本。版本号：修 bug → patch，新功能 → minor，不兼容 → major。GitHub 或门户不可用时，运维终端只做不构建的应急操作。</p>
   <div class="cmds">
-    <div class="cmd"><div class="t">发新版 / 回滚</div><pre>GitHub Actions →「发布」（patch / minor / major）/「回滚」，或门户流水线页</pre></div>
+    <div class="cmd"><div class="t">发新版 / 回滚</div><pre>内网门户 →「发布」（patch / minor / major）/「回滚」；兜底：GitHub Actions 表单</pre></div>
     <div class="cmd"><div class="t">应急：切回上一次上线前的版本</div><pre>melon rollback &lt;服务&gt;</pre></div>
     <div class="cmd"><div class="t">应急：线上版本与最近部署事件</div><pre>melon status &lt;服务&gt;</pre></div>
     <div class="cmd"><div class="t">下发 .env（来自 1Password）</div><pre>pbpaste | melon config &lt;服务&gt;</pre></div>
   </div>
   <h3>发新版的流程</h3>
-  <div class="flow"><span class="s">08–23 点窗口</span><span class="a">→</span><span class="s">main 的 CI 全绿</span><span class="a">→</span><span class="s">打 vX.Y.Z</span><span class="a">→</span><span class="s">从 tag 构建</span><span class="a">→</span><span class="s">推镜像仓库</span><span class="a">→</span><span class="s">部署入口按摘要拉取</span><span class="a">→</span><span class="s">T0 先备份</span><span class="a">→</span><span class="s">切到 :prod</span><span class="a">→</span><span class="s">/health 60 秒</span><span class="a">→</span><span class="s">不过自动切回上一版</span></div>
+  <div class="flow"><span class="s">08–23 点窗口</span><span class="a">→</span><span class="s">main 的 CI 全绿</span><span class="a">→</span><span class="s">打 vX.Y.Z</span><span class="a">→</span><span class="s">从 tag 构建</span><span class="a">→</span><span class="s">推镜像仓库</span><span class="a">→</span><span class="s">部署入口按摘要拉取</span><span class="a">→</span><span class="s">T0 先备份</span><span class="a">→</span><span class="s">切到 :prod</span><span class="a">→</span><span class="s">/health 60 秒</span><span class="a">→</span><span class="s">不过自动切回上一版</span><span class="a">→</span><span class="s">门户验收：/health 版本 = tag，稳定 20 秒</span></div>
   <div class="tbl" style="margin-top:12px"><table>
     <thead><tr><th>规则</th><th>说明 <span class="badge b-n">§5.1 · §9.3</span></th></tr></thead>
     <tbody>

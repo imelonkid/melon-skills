@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# 项目基线 v1 · Node 服务的 CI 测试入口（melon-ci pr-check：scripts/ci-test.sh 存在就跑；本机也能跑）。
+# 项目基线 v2 · Node 服务的 CI 测试入口（melon-ci pr-check：scripts/ci-test.sh 存在就跑；本机也能跑）。
 # 不碰外网和真实数据：临时数据目录、随机端口；失败时打出服务日志。Node / pnpm 版本与 deploy/Dockerfile 一致。
+# 私有包 @imelonkid/*：CI 里 melon-ci 提供 NODE_AUTH_TOKEN；本机先 export 一个有 read:packages 的令牌（.npmrc 引用它）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

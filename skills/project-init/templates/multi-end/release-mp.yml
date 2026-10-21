@@ -1,6 +1,8 @@
-# 发布小程序（项目基线「小程序端」）：Actions →「发布小程序」→ Run workflow，选 patch / minor / major。
+# 发布小程序（项目基线「小程序端」）：平时在内网门户点「发布」（流水线 mp-release）；门户不可用时 Actions →「发布小程序」→ Run workflow。
+# 版本号：只修 bug → patch；有新功能 → minor；不兼容 → major。
 # 门禁（08–23 点、main 的 CI 全绿）→ 打 tag mp-vX.Y.Z → 从 tag 构建 → 经部署入口在固定 IP 主机上传为体验版 → GitHub Release。
-# 之后在微信后台：设为体验版测试 → 提交审核 → 全量发布。流水线本体在 imelonkid/melon-ci（mp-release）。
+# 之后在微信后台：设为体验版测试 → 提交审核 → 全量发布；门户上「提审」「发布上线」两步由人确认（微信没有查线上版本的接口）。
+# 流水线本体在 imelonkid/melon-ci（mp-release）。
 name: 发布小程序
 run-name: "发布小程序 · ${{ inputs.bump }}${{ inputs.emergency && ' · 紧急变更' || '' }}"
 concurrency:
@@ -20,7 +22,7 @@ on:
         default: false
 jobs:
   release:
-    permissions: { contents: write, checks: read }   # 打 tag、查 CI、建 Release
+    permissions: { contents: write, checks: read, packages: read }   # 打 tag、查 CI、建 Release、读私有包 @imelonkid/*
     uses: imelonkid/melon-ci/.github/workflows/mp-release.yml@v2
     with:
       bump: ${{ inputs.bump }}

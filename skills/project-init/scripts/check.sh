@@ -165,6 +165,45 @@ else
       && ok "服务端返回 minClient（客户端最低版本）" || tip "服务端 /api/health 没有 minClient（客户端兼容契约）"
   fi
 
+  # 小程序端（基线「小程序端」）：发布走 melon-ci mp-release（门户流水线 mp-release）
+  if [[ -d "$P/apps/miniapp" ]]; then
+    echo "▸ 小程序端"
+    grep -qs 'imelonkid/melon-ci/.github/workflows/mp-release.yml@v2' "$P/.github/workflows/release-mp.yml" \
+      && ok "发布表单 release-mp.yml（melon-ci mp-release @v2）" || tip "缺 .github/workflows/release-mp.yml 或没调用 melon-ci mp-release @v2（模板 templates/multi-end/）"
+  fi
+
+  # 日志公共包（基线 v2 增补 2026-10-21；规范在运维仓库 docs/11-logging.md）：
+  #   Node 的服务端 / 网页 / 小程序端用 @imelonkid/common（GitHub Packages 私有包）。
+  #   只给 △，不给 ✗：已有项目择期跟进，不让它们突然不过。
+  #   范围：仓库根与 apps/* 下的 package.json；桌面（Electron）、鸿蒙端和只做 workspace 根的 package.json 不查
+  echo "▸ 日志公共包（Node）"
+  uses_common=0; seen_node=0
+  for pj in "$P/package.json" "$P"/apps/*/package.json; do
+    [[ -f "$pj" ]] || continue
+    d="$(dirname "$pj")"; rel="${d#"$P"}"; rel="${rel#/}"; rel="${rel:-.}"
+    case "$rel" in apps/desktop|apps/harmony) continue ;; esac
+    grep -qE '"electron-builder"|"workspaces"' "$pj" && continue
+    seen_node=1
+    ver="$(grep -oE '"@imelonkid/common"[[:space:]]*:[[:space:]]*"[^"]*"' "$pj" | sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/')"
+    if [[ -z "$ver" ]]; then
+      tip "${rel} 没有依赖 @imelonkid/common（日志与错误上报公共包，不在项目里各写一遍）"; continue
+    fi
+    uses_common=1
+    [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && ok "${rel} 依赖 @imelonkid/common ${ver}" || tip "${rel} 的 @imelonkid/common 要钉确切版本（现在是 ${ver}）"
+    grep -qs 'npm.pkg.github.com' "$d/.npmrc" "$P/.npmrc" && ok "${rel} 有 .npmrc（@imelonkid → GitHub Packages）" \
+      || tip "${rel} 缺 .npmrc（模板 templates/stacks/node/npmrc：@imelonkid 指向 npm.pkg.github.com，令牌走 NODE_AUTH_TOKEN）"
+  done
+  if (( uses_common )); then
+    grep -qs 'id=npm_token' "$P/deploy/Dockerfile" && ok "Dockerfile 用 BuildKit secret npm_token 装私有包" \
+      || tip "deploy/Dockerfile 装依赖没挂 BuildKit secret npm_token（RUN --mount=type=secret,id=npm_token …，见 templates/stacks/node/Dockerfile）"
+    for w in release release-mp; do
+      f="$P/.github/workflows/$w.yml"; [[ -f "$f" ]] || continue
+      grep -qE 'packages:[[:space:]]*read' "$f" && ok "$w 表单授予 packages: read" || tip "$w 表单的 permissions 要加 packages: read（读私有包 @imelonkid/*）"
+    done
+  elif (( ! seen_node )); then
+    ok "不是 Node 项目，不适用"
+  fi
+
   echo "▸ 注册"
   if [[ ! -d "$OPS/registry/services" ]]; then
     tip "找不到 ops 仓库（${OPS}），无法核对注册"
