@@ -1,6 +1,6 @@
-# 项目基线 v2
+# 项目基线 v3
 
-> 2026-10-14（2026-10-21 增补）· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
+> v3 2026-10-21（新增「技术架构与选型」）· v2 2026-10-14· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
 >
 > 项目根目录的 `.melon-baseline` 记录它按哪一版接入；`scripts/check.sh` 按本文逐项检查并报告。
 
@@ -26,18 +26,62 @@
 | 登记到门户（运维仓库 `portal/config.json`）：每一端按端类型选发布流水线 `ends[].pipelines.release.use`——服务端 `server-release`、桌面端 `desktop-release`、小程序 `mp-release` | ✓ | ✓ | | §9.3 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
 | 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404；样板：yuxian `admin/auth/sso`（运维规范 §6.6） | ✓ | | | §6 |
-| 运营后台 / 管理界面的**前端优先用 Vue 3**（有构建：Vite + Vue 3，组件库默认 Element Plus；没有构建步骤的小工具：固定版本的 `vue.global.prod.js` 放进仓库，不从外网 CDN 加载）。确有理由用别的（React、纯原生等）在 README「技术选型例外」写明：用什么、为什么、谁同意的 | ✓ | | | — |
 | 日志与错误上报（运维仓库 `docs/11-logging.md`）：stdout 一行一条 JSON（`ts` / `level` / `service` / `version` / `trace_id` / `event` / `msg`），请求日志一请求一条；追踪号 `X-Request-Id`（响应头回传，错误响应体带 `traceId`）；密码、token、手机号等脱敏；客户端只报 warn / error，gzip 批量发 `POST /api/v1/client-logs`。Node 服务端、浏览器、uni-app **用公共包 `@imelonkid/common`**（钉确切版本；各端 `.npmrc` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；Dockerfile 用 BuildKit secret `npm_token`；发布表单加 `packages: read`；包设置里授予本仓库读权限）。其他技术栈按规范自行实现 | ✓ | | | §8 |
 | **第三方镜像**（数据库、缓存等）：也从镜像仓库拉，写 `<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`。先在运维仓库 `registry/mirror-images.txt` 登记，「同步第三方镜像」用 skopeo 复制到镜像仓库；**摘要以同步结果（同步摘要页）为准**，不一定等于 Docker Hub 上的（个别官方镜像镜像仓库只收 linux/amd64）。**不直接用 Docker Hub**：国内节点拉不动，旧摘要会被回收，灾备重建会失败 | ✓ | ✓ | | §5.1、§5.2 |
 | **用户上传的文件**（头像、图片等）一律放对象存储（OSS / COS，S3 兼容接口），**不存服务的数据目录**；子账号按前缀最小权限（只能读写本服务的前缀）、**没有删除权限**；阿里云 RAM 策略的资源用新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<前缀>/*`，配完先实测上传 | ✓ | | | §5.8 |
 
 
-## 技术栈（`templates/stacks/`）
+## 技术架构与选型（强制）
+
+**所有项目按本章选技术栈和架构，不各自发挥。**取业界最常用、最成熟、招人和找资料最容易的方案；一个场景只定一个默认，少数场景给出「允许」。现有项目不合规的列入迁移，大改时迁（见本章末）。
+
+### 架构
+
+| 项 | 标准 |
+|---|---|
+| 形态 | **模块化单体**：一个产品一个服务端，按业务域分模块（NestJS module），模块之间走服务接口、不跨模块直接查表。不拆微服务——要拆先写理由并经同意 |
+| 仓库 | **一个产品一个仓库**，多端放 `apps/<端>`（`server`、`admin`、`miniapp`、`desktop`、`harmony`、`web`），pnpm workspace；各端独立 tag、独立发布（见「多端」） |
+| 运营后台 | 前端构建产物打进服务端镜像、与服务端同一个 tag 发布（服务端在 `/admin/` 提供），只在内网入口开放 |
+| 服务端无状态 | 状态只在 MySQL、Redis、对象存储；本地磁盘只放临时文件。配置全走环境变量（`.env`），同一个镜像在主、备站点都能跑 |
+| 接口 | REST + JSON，前缀 `/api/v1`；统一响应体 `{ code, message, data, traceId }`，业务错误码按域分段；OpenAPI（`@nestjs/swagger`，生产环境关闭文档页）；入参一律校验（`class-validator`） |
+| 认证 | C 端：JWT（短期访问令牌 + 刷新令牌）；运营后台：网关统一认证（`X-Melon-*`，见「运营后台」），不做自己的账号密码 |
+| 实时推送 | WebSocket（NestJS Gateway + Socket.IO），确有需要才上 |
+| 异步任务 | 定时：`@nestjs/schedule`；队列：BullMQ（Redis）。不引 RabbitMQ / Kafka |
+| 部署 | Docker + Compose，单机单服务，镜像进镜像仓库按摘要上线（见「发布」）；不上 Kubernetes |
+
+### 技术选型
+
+| 场景 | 默认（必须） | 允许（写清理由，无需例外审批） |
+|---|---|---|
+| 语言 | **TypeScript**（`strict`），前后端、库统一 | Python：AI 推理 / 数据处理类服务、运维脚本 |
+| 运行时与包管理 | Node.js 22 LTS；pnpm（corepack 钉版本）、pnpm workspace | — |
+| 服务端框架 | **NestJS** | AI / 数据类 Python 服务用 FastAPI |
+| 数据库 | **MySQL 8**（阿里云 / 腾讯云同款，运维成熟） | SQLite：桌面 / 手机客户端本地存储、单机内部小工具 |
+| ORM 与迁移 | **Prisma**（`prisma migrate`，迁移向后兼容：先扩展、再收缩） | — |
+| 缓存 / 锁 / 队列 | **Redis 7** | — |
+| 对象存储 | S3 兼容接口（`@aws-sdk/client-s3`），阿里云 OSS / 腾讯云 COS 换云只改配置；不用厂商专有 SDK | — |
+| 运营后台 / 管理界面 | **Vue 3 + Vite + Element Plus + Pinia + Vue Router**，HTTP 用 axios 统一封装 | 没有构建步骤的平台小工具：仓库内固定版本的 `vue.global.prod.js` |
+| 小程序 | **uni-app（Vue 3 + Pinia + TypeScript）** | — |
+| 原生 App | **鸿蒙 ArkTS**（DevEco） | iOS / 安卓原生暂不做 |
+| 桌面 | **Electron + electron-builder**，界面 Vue 3 + Vite | — |
+| 官网 / 博客 | Astro | 文档站：VitePress |
+| 日志与错误上报 | `@imelonkid/common`（见上表） | Python：按规范自行实现 |
+| 测试 | 服务端 Jest（NestJS 默认）；前端 Vitest；端到端 Playwright | — |
+| 代码风格 | ESLint + Prettier（各端同一份配置） | — |
+
+### 例外与迁移
+
+- **例外**：上表没有、或要用「默认 / 允许」以外的方案，在项目 README「技术选型例外」写明：用什么、为什么、谁同意的（用户本人）。没有例外记录就按默认。
+- **平台项目**按 `docs/09-projects.md` 自己的约定（门户：Python 标准库 + 无构建 Vue；Vine：Electron；melon-common：TypeScript 库），也要在各自 README 写明。
+- **存量项目不合规的**：在注册表 `known_gaps` 记一条「技术选型：现状 → 目标」，大改该端时迁，不为迁移单独停功能开发。
+- `check.sh` 对能机械判断的给 △（服务端不是 NestJS、运营后台不是 Vue、服务端镜像不是 Node 22 等）。
+
+## 技术栈模板（`templates/stacks/`）
 
 | 栈 | 文件 | 约定 |
 |---|---|---|
 | `python` | `Dockerfile`、`health.py`、`ci-test.sh` | `python:3.13-alpine`；入口 `app/main.py --data /data --port 8080`；只用标准库时不要 requirements.txt |
-| `node` | `Dockerfile`、`health.js`、`ci-test.sh`、`npmrc` | `node:22-alpine` + pnpm 10.32.1（corepack）；入口 `src/server.js`；依赖 `@imelonkid/common`（钉确切版本）：`npmrc` 复制为 `.npmrc`，Dockerfile 安装依赖那一步挂 BuildKit secret `npm_token`（令牌不进镜像层） |
+| `node` | `Dockerfile`、`health.js`、`ci-test.sh`、`npmrc` | `node:22-alpine` + pnpm 10.32.1（corepack）；入口 `src/server.js`（**待升级为 NestJS + Prisma 骨架**，与上一章对齐）；依赖 `@imelonkid/common`（钉确切版本）：`npmrc` 复制为 `.npmrc`，Dockerfile 安装依赖那一步挂 BuildKit secret `npm_token`（令牌不进镜像层） |
 | `static` | `Dockerfile`、`Caddyfile`、`ci-test.sh` | 构建产物在 `dist/`，Caddy 提供并在 `/health` 返回版本；**静态站也按镜像发布**，与服务同一条 tag 发布 / 回滚路径 |
 
 新增技术栈 = 在 `stacks/` 加一个目录（三件套：Dockerfile、健康检查示例、ci-test.sh），并在本表登记。
@@ -85,7 +129,7 @@
 
 ## 变更
 
-- **v2 增补**（2026-10-21 晚）：**管理后台前端优先 Vue 3**（有构建用 Vite + Element Plus；无构建的小工具用仓库内固定版本的 `vue.global.prod.js`）；用别的要在 README「技术选型例外」写明理由与同意人。`check.sh` 新增 △：`apps/admin*` 前端没依赖 vue 且没写例外。已有项目：yuxian 后台已是 Vue；门户前端逐页迁到 Vue（改到哪页迁哪页）
+- **v3**（2026-10-21）：新增「**技术架构与选型（强制）**」——模块化单体、一个产品一个仓库（pnpm workspace）、REST `/api/v1` 统一响应体；TypeScript + NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Vite + Element Plus；小程序 uni-app；原生只做鸿蒙 ArkTS；桌面 Electron；对象存储 S3 兼容 SDK；Jest / Vitest / Playwright；ESLint + Prettier。默认之外的写 README「技术选型例外」。数据库默认由「没理由就 SQLite」改为 MySQL 8（SQLite 只用于客户端本地与单机小工具）。`check.sh` 新增 △（服务端框架、运营后台前端、Node 版本）。已有项目：不合规项写进注册表 `known_gaps`（现状 → 目标），大改时迁；改完把 `.melon-baseline` 改为 v3
 
 - **v2 增补**（2026-10-21）：对齐已上线的平台事实——发布 / 回滚只在内网门户上点（GitHub 表单兜底），版本号 patch / minor / major 口径；门户按端类型选流水线（`server-release` 用 `/health` 的 `version` = tag 验收、`desktop-release`、`mp-release` 两个人工确认）；日志规范要点与公共包 `@imelonkid/common` 的接入（`templates/stacks/node/` 加 `npmrc`、Dockerfile 挂 `npm_token`，发布表单加 `packages: read`）；运营后台身份头加 `X-Melon-Role`；第三方镜像摘要以同步结果为准；**用户上传文件一律对象存储**；**PR 一律以 main 为目标**；Node 库用 melon-ci `npm-release`。`check.sh` 新增几条 △（Node 端是否接公共包及其 `.npmrc` / 读包令牌、小程序端发布表单）。不升版本号；已有项目：按 △ 补，用户上传还存在数据目录的写进 `known_gaps` 并迁到对象存储
 

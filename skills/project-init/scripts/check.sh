@@ -204,14 +204,28 @@ else
     ok "不是 Node 项目，不适用"
   fi
 
-  # 管理后台前端优先 Vue 3（基线 v2 增补 2026-10-21 晚）：apps/admin* 没依赖 vue、README 也没写「技术选型例外」→ △
+  # 技术架构与选型（基线 v3 2026-10-21）：能机械判断的给 △；README 写了「技术选型例外」的不报
+  echo "▸ 技术选型（基线 v3）"
+  exc=0; grep -qs '技术选型例外' "$P/README.md" && { exc=1; ok "README 有「技术选型例外」（按例外记录核对）"; }
   for pj in "$P"/apps/admin*/package.json; do
     [[ -f "$pj" ]] || continue
     rel="${pj#"$P/"}"; rel="${rel%/package.json}"
-    if grep -qE '"vue"[[:space:]]*:' "$pj"; then ok "${rel} 前端用 Vue"
-    elif grep -qs '技术选型例外' "$P/README.md"; then ok "${rel} 前端不是 Vue，README 已写技术选型例外"
-    else tip "${rel} 前端没用 Vue：管理后台前端优先 Vue 3，用别的要在 README「技术选型例外」写明理由"; fi
+    grep -qE '"vue"[[:space:]]*:' "$pj" && ok "${rel} 前端 Vue" || (( exc )) || tip "${rel} 前端不是 Vue 3（运营后台默认 Vue 3 + Vite + Element Plus）"
   done
+  for pj in "$P/apps/server/package.json" "$P/server/package.json"; do
+    [[ -f "$pj" ]] || continue
+    rel="${pj#"$P/"}"; rel="${rel%/package.json}"
+    grep -qE '"@nestjs/core"[[:space:]]*:' "$pj" && ok "${rel} 用 NestJS" || (( exc )) || tip "${rel} 服务端不是 NestJS（服务端默认 TypeScript + NestJS + Prisma + MySQL 8）"
+    if grep -qE '"@nestjs/core"' "$pj"; then
+      grep -qE '"@prisma/client"[[:space:]]*:' "$pj" && ok "${rel} 用 Prisma" || (( exc )) || tip "${rel} 没用 Prisma（ORM 与迁移默认 Prisma）"
+    fi
+  done
+  if [[ -f "$P/deploy/Dockerfile" ]] && grep -qE '^FROM[[:space:]]+[^ ]*node:' "$P/deploy/Dockerfile"; then
+    grep -qE '^FROM[[:space:]]+[^ ]*node:22' "$P/deploy/Dockerfile" && ok "服务端镜像 Node 22" || tip "deploy/Dockerfile 的 Node 不是 22 LTS"
+  fi
+  if [[ -f "$P/requirements.txt" || -f "$P/pyproject.toml" || -f "$P/server/requirements.txt" ]] && (( ! exc )); then
+    tip "Python 服务：基线默认 TypeScript + NestJS；AI / 数据类可用 FastAPI，在 README「技术选型例外」写明"
+  fi
 
   echo "▸ 注册"
   if [[ ! -d "$OPS/registry/services" ]]; then

@@ -47,7 +47,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 |---|---|
 | 项目名 | kebab-case；同时是 GitHub 仓库名、compose 项目名、容器名、服务器目录 `/opt/<名>`、1Password 条目 `ops/<名>/prod` |
 | 类型 | **服务**（要部署）/ **静态站** / **库或工具**（不部署，不注册；Node 库发到 GitHub Packages，用 melon-ci `npm-release`） |
-| 技术栈 | 按用户说的；没说就问 |
+| 技术栈 | **按基线「技术架构与选型」，不问**（服务端 NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Element Plus；小程序 uni-app；原生鸿蒙 ArkTS；桌面 Electron）。用户要用别的：说明默认是什么、偏离的代价，用户坚持就写进 README「技术选型例外」 |
 | 可见性 | 私有（默认）/ 公开 |
 | 对外域名 | 服务 / 静态站才问；默认 `<名>.melonkid.cn` |
 | 边界 | 负责什么、不负责什么（容易被误放进来的东西归谁）、依赖或被谁依赖。能从用户描述和目录推出来就不问，写进确认摘要 |
@@ -59,7 +59,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 - **主站点**：读 `sites.yaml` 每个站点的 `purpose` 和 `roles`。只放 `roles` 含 `compute` 的站点；`purpose` 写着某业务"专用"的站点不放其他项目；`roles` 是 `ops` / `standby` 的站点**不放新业务**（§4.4 监控独立）。
 - **备站点与裁判**：从 `standby_pairs` 里 `primary` = 主站点的那一条直接取 `standby` 和 `witness`，不自己发明。
 - **ICP**：主站点和备站点的 `icp_access` 都要是 `true` 才能对外（§4.7）；`pending` 的写进 `known_gaps`。
-- **数据库选型**：没有明确理由就用 **SQLite（WAL）**，单文件放 `data/`，能直接上 Litestream 做 L2；确需 MySQL / Postgres，备份用只读账号 `mysqldump --single-transaction` / `pg_dump`，L2 走 binlog / WAL 复制。
+- **数据库**：按基线默认 **MySQL 8 + Prisma**（备份用只读账号 `mysqldump --single-transaction`，L2 走 binlog 复制）；SQLite（WAL，Litestream 做 L2）只用于客户端本地存储和单机内部小工具。
 
 ### 2. 本地目录与 git
 
@@ -73,7 +73,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 ### 3. 骨架（按项目基线）
 
-**项目基线**定义在 [`templates/BASELINE.md`](templates/BASELINE.md)：每类项目必须有哪些文件、对应规范哪一条、check.sh 怎么查。**以基线为准，不以任何具体业务项目为样板**；基线缺的东西先补进基线（升版本），再用到项目里。技术栈相关的文件取 `templates/stacks/<栈>/`（python / node / static）。
+**项目基线**定义在 [`templates/BASELINE.md`](templates/BASELINE.md)：每类项目必须有哪些文件、对应规范哪一条、check.sh 怎么查。**以基线为准，不以任何具体业务项目为样板**；基线缺的东西先补进基线（升版本），再用到项目里。**技术栈与架构按基线「技术架构与选型（强制）」一章选，不各自发挥**；技术栈相关的文件取 `templates/stacks/<栈>/`（python / node / static）。
 
 所有类型：
 
@@ -130,7 +130,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - **只在内网**：`<服务>.in.melonkid.cn`，经网关统一认证（设备 + 门户会话 + 门户分配的项目权限）；公网入口**清掉 `X-Melon-*` 请求头**、管理路径返回 404。
 - **不做自己的账号密码**：运营人员就是门户账号。凭网关转来的门户身份请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role` 统一登录，按门户账号 id（`X-Melon-Uid`）关联本地管理员，第一次进来自动建；业务自己的密码登录默认关，只留应急开关。
 - 样板：yuxian `admin/auth/sso`。入口登记在门户「常用站点 · 管理界面」，网关与入口配置在运维仓库，**不在本项目里写**。
-- **前端优先 Vue 3**：有构建用 Vite + Vue 3 + Element Plus（样板 yuxian `apps/admin`）；没有构建步骤的小工具用固定版本的 `vue.global.prod.js` 放进仓库（不从外网 CDN 加载）。不用拼 HTML 字符串 + `innerHTML` 的写法（漏一处转义就是 XSS，整块重画还会丢滚动和展开状态）。特殊场景用别的，在 README「技术选型例外」写明用什么、为什么、谁同意的。
+- **前端用 Vue 3**（基线「技术架构与选型」）：有构建用 Vite + Vue 3 + Element Plus；没有构建步骤的小工具用固定版本的 `vue.global.prod.js` 放进仓库（不从外网 CDN 加载）。不用拼 HTML 字符串 + `innerHTML` 的写法（漏一处转义就是 XSS，整块重画还会丢滚动和展开状态）。特殊场景用别的，在 README「技术选型例外」写明用什么、为什么、谁同意的。
 
 #### 密钥（§5.4）
 
