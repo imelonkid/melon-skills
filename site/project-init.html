@@ -147,6 +147,7 @@
       <tr><td>日志</td><td>stdout 一行一条 JSON（<code>ts</code> / <code>level</code> / <code>service</code> / <code>version</code> / <code>trace_id</code> / <code>event</code> / <code>msg</code>），请求日志一请求一条；密码、token、手机号必须脱敏。Node 服务端、网页、uni-app 用公共包 <code>@imelonkid/common</code></td></tr>
       <tr><td>追踪号与客户端上报</td><td>请求头 <code>X-Request-Id</code>，错误响应体带 <code>traceId</code>；客户端只报 warn / error，gzip 批量发 <code>/api/v1/client-logs</code></td></tr>
       <tr><td>运营后台</td><td>只在内网 <code>&lt;服务&gt;.in.melonkid.cn</code>，不做自己的账号密码：凭网关转来的门户身份（<code>X-Melon-*</code>）统一登录</td></tr>
+      <tr><td>管理后台前端</td><td>优先 Vue 3（有构建：Vite + Element Plus；无构建的小工具：仓库内固定版本的 <code>vue.global.prod.js</code>）；用别的在 README「技术选型例外」写明理由</td></tr>
       <tr><td>埋点</td><td>OpenTelemetry SDK；<code>OTEL_SERVICE_NAME</code>、<code>OTEL_RESOURCE_ATTRIBUTES</code>（版本、环境、云厂商）由 compose 注入</td></tr>
       <tr><td>导出</td><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code> 为空 = 不导出；采样在 Collector 做，代码不写死</td></tr>
       <tr><td>业务指标</td><td><code>&lt;服务&gt;_&lt;领域&gt;_&lt;事件&gt;_total</code>；标签禁止 user_id、URL 原文等高基数值</td></tr>

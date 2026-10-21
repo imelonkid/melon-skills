@@ -26,6 +26,7 @@
 | 登记到门户（运维仓库 `portal/config.json`）：每一端按端类型选发布流水线 `ends[].pipelines.release.use`——服务端 `server-release`、桌面端 `desktop-release`、小程序 `mp-release` | ✓ | ✓ | | §9.3 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
 | 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404；样板：yuxian `admin/auth/sso`（运维规范 §6.6） | ✓ | | | §6 |
+| 运营后台 / 管理界面的**前端优先用 Vue 3**（有构建：Vite + Vue 3，组件库默认 Element Plus；没有构建步骤的小工具：固定版本的 `vue.global.prod.js` 放进仓库，不从外网 CDN 加载）。确有理由用别的（React、纯原生等）在 README「技术选型例外」写明：用什么、为什么、谁同意的 | ✓ | | | — |
 | 日志与错误上报（运维仓库 `docs/11-logging.md`）：stdout 一行一条 JSON（`ts` / `level` / `service` / `version` / `trace_id` / `event` / `msg`），请求日志一请求一条；追踪号 `X-Request-Id`（响应头回传，错误响应体带 `traceId`）；密码、token、手机号等脱敏；客户端只报 warn / error，gzip 批量发 `POST /api/v1/client-logs`。Node 服务端、浏览器、uni-app **用公共包 `@imelonkid/common`**（钉确切版本；各端 `.npmrc` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；Dockerfile 用 BuildKit secret `npm_token`；发布表单加 `packages: read`；包设置里授予本仓库读权限）。其他技术栈按规范自行实现 | ✓ | | | §8 |
 | **第三方镜像**（数据库、缓存等）：也从镜像仓库拉，写 `<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`。先在运维仓库 `registry/mirror-images.txt` 登记，「同步第三方镜像」用 skopeo 复制到镜像仓库；**摘要以同步结果（同步摘要页）为准**，不一定等于 Docker Hub 上的（个别官方镜像镜像仓库只收 linux/amd64）。**不直接用 Docker Hub**：国内节点拉不动，旧摘要会被回收，灾备重建会失败 | ✓ | ✓ | | §5.1、§5.2 |
 | **用户上传的文件**（头像、图片等）一律放对象存储（OSS / COS，S3 兼容接口），**不存服务的数据目录**；子账号按前缀最小权限（只能读写本服务的前缀）、**没有删除权限**；阿里云 RAM 策略的资源用新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<前缀>/*`，配完先实测上传 | ✓ | | | §5.8 |
@@ -83,6 +84,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v2 增补**（2026-10-21 晚）：**管理后台前端优先 Vue 3**（有构建用 Vite + Element Plus；无构建的小工具用仓库内固定版本的 `vue.global.prod.js`）；用别的要在 README「技术选型例外」写明理由与同意人。`check.sh` 新增 △：`apps/admin*` 前端没依赖 vue 且没写例外。已有项目：yuxian 后台已是 Vue；门户前端逐页迁到 Vue（改到哪页迁哪页）
 
 - **v2 增补**（2026-10-21）：对齐已上线的平台事实——发布 / 回滚只在内网门户上点（GitHub 表单兜底），版本号 patch / minor / major 口径；门户按端类型选流水线（`server-release` 用 `/health` 的 `version` = tag 验收、`desktop-release`、`mp-release` 两个人工确认）；日志规范要点与公共包 `@imelonkid/common` 的接入（`templates/stacks/node/` 加 `npmrc`、Dockerfile 挂 `npm_token`，发布表单加 `packages: read`）；运营后台身份头加 `X-Melon-Role`；第三方镜像摘要以同步结果为准；**用户上传文件一律对象存储**；**PR 一律以 main 为目标**；Node 库用 melon-ci `npm-release`。`check.sh` 新增几条 △（Node 端是否接公共包及其 `.npmrc` / 读包令牌、小程序端发布表单）。不升版本号；已有项目：按 △ 补，用户上传还存在数据目录的写进 `known_gaps` 并迁到对象存储
 

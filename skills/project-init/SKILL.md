@@ -130,6 +130,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - **只在内网**：`<服务>.in.melonkid.cn`，经网关统一认证（设备 + 门户会话 + 门户分配的项目权限）；公网入口**清掉 `X-Melon-*` 请求头**、管理路径返回 404。
 - **不做自己的账号密码**：运营人员就是门户账号。凭网关转来的门户身份请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role` 统一登录，按门户账号 id（`X-Melon-Uid`）关联本地管理员，第一次进来自动建；业务自己的密码登录默认关，只留应急开关。
 - 样板：yuxian `admin/auth/sso`。入口登记在门户「常用站点 · 管理界面」，网关与入口配置在运维仓库，**不在本项目里写**。
+- **前端优先 Vue 3**：有构建用 Vite + Vue 3 + Element Plus（样板 yuxian `apps/admin`）；没有构建步骤的小工具用固定版本的 `vue.global.prod.js` 放进仓库（不从外网 CDN 加载）。不用拼 HTML 字符串 + `innerHTML` 的写法（漏一处转义就是 XSS，整块重画还会丢滚动和展开状态）。特殊场景用别的，在 README「技术选型例外」写明用什么、为什么、谁同意的。
 
 #### 密钥（§5.4）
 

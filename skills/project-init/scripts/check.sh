@@ -204,6 +204,15 @@ else
     ok "不是 Node 项目，不适用"
   fi
 
+  # 管理后台前端优先 Vue 3（基线 v2 增补 2026-10-21 晚）：apps/admin* 没依赖 vue、README 也没写「技术选型例外」→ △
+  for pj in "$P"/apps/admin*/package.json; do
+    [[ -f "$pj" ]] || continue
+    rel="${pj#"$P/"}"; rel="${rel%/package.json}"
+    if grep -qE '"vue"[[:space:]]*:' "$pj"; then ok "${rel} 前端用 Vue"
+    elif grep -qs '技术选型例外' "$P/README.md"; then ok "${rel} 前端不是 Vue，README 已写技术选型例外"
+    else tip "${rel} 前端没用 Vue：管理后台前端优先 Vue 3，用别的要在 README「技术选型例外」写明理由"; fi
+  done
+
   echo "▸ 注册"
   if [[ ! -d "$OPS/registry/services" ]]; then
     tip "找不到 ops 仓库（${OPS}），无法核对注册"
