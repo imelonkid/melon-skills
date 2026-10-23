@@ -29,4 +29,5 @@ jobs:
       emergency: ${{ inputs.emergency }}
       # go-version: "<版本，与 go.mod 一致>"           # 构建要编译 Go 时打开（scripts/prebuild.sh 或 scripts/package-desktop.sh）
       # node-version: "22"                            # 构建用到的 Node 版本（默认 20）
+      # runner: macos-15                              # 构建机（默认 macos-14）：原生 App 要 SwiftPM 6 / macOS 15 SDK 时打开
     secrets: inherit

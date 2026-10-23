@@ -125,7 +125,7 @@
 |---|---|
 | 技术栈 | 默认 Electron + electron-builder（Mac arm64 先行；界面 Vue 3 + Vite）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`）。走「技术选型例外」的（如原生 App）照样用下面的发布与分发，只是打包换成打包钩子 |
 | 打包 | 发布脚本 `scripts/release-desktop.sh`（模板）按技术栈二选一：默认 electron-builder 出 dmg；**项目有 `scripts/package-desktop.sh`（模板）就交给它**——参数 `<版本号> <tag> <输出目录>`，产出至少 ad-hoc 签名的 `<产品名>.app`，版本号构建时注入（`Info.plist` 的 `CFBundleShortVersionString` = 版本号、`CFBundleVersion` = tag；随应用分发的命令行工具同样注入），发布脚本统一做成 dmg。构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
-| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
+| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`，原生 App 要更新的 Xcode / macOS SDK 时填 `runner: macos-15`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
 | 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
 | 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
 | 客户端更新 | 启动 10 秒后、之后每 6 小时读一次 `latest.json`（地址写在客户端里，不经服务端）；`version` 按语义化版本**大于**自己的版本（构建时注入的那个）才提示，显示 `notes`，点「下载」用系统浏览器打开 `files.arm64`；可以「跳过这个版本」；读失败静默、下次再试。没有 Apple 开发者签名做不了静默安装，写进 README 的已知限制 |
