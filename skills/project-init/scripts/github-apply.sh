@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # 按项目基线把 GitHub 仓库设置应用到一个仓库（templates/github/settings.json）：合并方式、main 分支保护、production 环境。
 #
-#   scripts/github-apply.sh imelonkid/<名>           应用（幂等）
-#   scripts/github-apply.sh imelonkid/<名> --check   只检查与基线是否一致，不改
+#   scripts/github-apply.sh imelonkid/<名> [--kind service|desktop]           应用（幂等）
+#   scripts/github-apply.sh imelonkid/<名> --check [--kind service|desktop]   只检查与基线是否一致，不改
+#   --kind：production 环境要的变量与密钥按项目类型（默认 service：部署入口与镜像仓库；desktop：对象存储）
 #
 # 不写 secrets 与环境变量的值（DEPLOY_SSH_KEY、ACR_PASSWORD …）：那些按 SKILL.md「4b」由各自的流程写入；--check 只核对名字齐不齐。
 set -euo pipefail
-R="${1:?用法：github-apply.sh <owner/repo> [--check]}"; MODE="${2:-apply}"
+R="${1:?用法：github-apply.sh <owner/repo> [--check] [--kind service|desktop]}"; shift
+MODE=apply; KIND=service
+while [[ $# -gt 0 ]]; do
+  case "$1" in --check) MODE=--check ;; --kind) KIND="${2:?--kind 要跟 service 或 desktop}"; shift ;; *) echo "不认识的参数：$1" >&2; exit 2 ;; esac
+  shift
+done
+[[ "$KIND" == service || "$KIND" == desktop ]] || { echo "--kind 只能是 service 或 desktop" >&2; exit 2; }
 S="$(cd "$(dirname "$0")/../templates/github" && pwd)/settings.json"
 J() { python3 -c "import json,sys; d=json.load(open('$S')); print(json.dumps(eval(sys.argv[1])))" "$1"; }
 fail=0; ok() { printf '  ✓ %s\n' "$*"; }; bad() { printf '  ✗ %s\n' "$*"; fail=1; }
@@ -27,9 +34,9 @@ if [[ "$MODE" != --check ]]; then
 fi
 
 echo "▸ 检查 $R 与基线是否一致"
-python3 - "$R" "$S" <<'PY' || fail=1
+python3 - "$R" "$S" "$KIND" <<'PY' || fail=1
 import json, subprocess, sys
-r, s = sys.argv[1], json.load(open(sys.argv[2]))
+r, s, kind = sys.argv[1], json.load(open(sys.argv[2])), sys.argv[3]
 gh = lambda p: json.loads(subprocess.run(["gh", "api", p], capture_output=True, text=True).stdout or "null")
 bad = 0
 def chk(ok, msg):
@@ -48,11 +55,12 @@ for env, spec in s["environments"].items():
     pol = gh(f"repos/{r}/environments/{env}/deployment-branch-policies") or {}
     names = {x["name"] for x in pol.get("branch_policies", [])}
     chk(set(spec["branches"]) == names, f"{env} 环境只允许 {', '.join(spec['branches'])}（实际 {', '.join(sorted(names)) or '未设置'}）")
-    for kind in ("variables", "secrets"):
-        want = set(spec.get(kind, []))
-        have = {x["name"] for x in (gh(f"repos/{r}/environments/{env}/{kind}?per_page=100") or {}).get(kind, [])}
+    need = (spec.get("kinds") or {}).get(kind, spec)
+    for what in ("variables", "secrets"):
+        want = set(need.get(what, []))
+        have = {x["name"] for x in (gh(f"repos/{r}/environments/{env}/{what}?per_page=100") or {}).get(what, [])}
         miss = sorted(want - have)
-        chk(not miss, f"{env} 环境的{'变量' if kind == 'variables' else '密钥'}：{', '.join(sorted(want))}" + (f"（缺 {', '.join(miss)}）" if miss else ""))
+        chk(not miss, f"{env} 环境的{'变量' if what == 'variables' else '密钥'}（{kind}）：{', '.join(sorted(want))}" + (f"（缺 {', '.join(miss)}）" if miss else ""))
 sys.exit(bad)
 PY
 exit $fail

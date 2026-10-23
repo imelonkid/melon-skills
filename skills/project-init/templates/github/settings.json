@@ -1,5 +1,5 @@
 {
-  "_说明": "项目基线 v1 · GitHub 仓库设置（服务 / 静态站；需要 GitHub Pro：私有仓库的分支保护与 Environments）。由 scripts/github-apply.sh 应用，--check 只检查。",
+  "_说明": "项目基线 · GitHub 仓库设置（服务 / 静态站 / 桌面应用；需要 GitHub Pro：私有仓库的分支保护与 Environments）。由 scripts/github-apply.sh 应用，--check 只检查；--kind 选 production 环境要的变量与密钥（service：部署入口与镜像仓库；desktop：对象存储）。",
   "repo": {
     "allow_squash_merge": true,
     "allow_merge_commit": false,
@@ -29,16 +29,30 @@
       "branches": [
         "main"
       ],
-      "variables": [
-        "DEPLOY_HOST",
-        "DEPLOY_KNOWN_HOSTS",
-        "ACR_REGISTRY",
-        "ACR_USERNAME"
-      ],
-      "secrets": [
-        "DEPLOY_SSH_KEY",
-        "ACR_PASSWORD"
-      ]
+      "kinds": {
+        "service": {
+          "variables": [
+            "DEPLOY_HOST",
+            "DEPLOY_KNOWN_HOSTS",
+            "ACR_REGISTRY",
+            "ACR_USERNAME"
+          ],
+          "secrets": [
+            "DEPLOY_SSH_KEY",
+            "ACR_PASSWORD"
+          ]
+        },
+        "desktop": {
+          "variables": [
+            "OSS_BUCKET",
+            "OSS_ENDPOINT"
+          ],
+          "secrets": [
+            "OSS_ACCESS_KEY_ID",
+            "OSS_ACCESS_KEY_SECRET"
+          ]
+        }
+      }
     }
   }
 }

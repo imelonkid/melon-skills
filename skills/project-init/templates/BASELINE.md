@@ -129,6 +129,7 @@
 | 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
 | 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
 | 客户端更新 | 启动 10 秒后、之后每 6 小时读一次 `latest.json`（地址写在客户端里，不经服务端）；`version` 按语义化版本**大于**自己的版本（构建时注入的那个）才提示，显示 `notes`，点「下载」用系统浏览器打开 `files.arm64`；可以「跳过这个版本」；读失败静默、下次再试。没有 Apple 开发者签名做不了静默安装，写进 README 的已知限制 |
+| GitHub 设置 | `scripts/github-apply.sh imelonkid/<名> --kind desktop`：合并方式、main 分支保护（与服务相同的四项检查）、production 环境（只允许 main）；`--check --kind desktop` 核对 |
 | production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`，值存 1Password `ops/<名>/prod`）。不需要部署入口 |
 | CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`：只跑不需要图形界面的检查与测试，不碰外网和真实数据。模板是 Electron 的（语法检查 + `node --test`，不下载 Electron）；其他技术栈换成它的单测（如 `go vet` + `go test`）。PR 检查跑在 Linux 上，只能在 macOS 编译的部分交给发布流水线 |
 | 门户 | 运维仓库 `portal/config.json` 的 `services` 加一条（模板 `portal-service.json`：`pipelines.release.use: desktop-release`，任务名按 melon-ci `desktop-release`；`online` 读 `latest.json` 的 `tag`），`portal/push.sh` 推上去；门户令牌的仓库范围包含本仓库 |
