@@ -206,6 +206,22 @@
   <div class="flow"><span class="s">调试证书 + 登记设备<br><small>开发者自测，hdc 安装</small></span><span class="a">→</span><span class="s">发布证书 + AGC 邀请测试<br><small>灰度，不需要软著</small></span><span class="a">→</span><span class="s">正式上架<br><small>软著、App 备案</small></span></div>
 </section>
 
+<section id="desktop" data-toc="桌面应用">
+  <h2>桌面应用（独立客户端）</h2>
+  <p class="intro">只有桌面端、没有自己服务端的客户端。安装包和版本清单都放对象存储，发布只在门户上点。模板在 <code>templates/desktop/</code>。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>项</th><th>约定</th></tr></thead>
+    <tbody>
+      <tr><td>打包</td><td>默认 Electron（electron-builder 出 dmg）；走技术选型例外的（如原生 App）提供 <code>scripts/package-desktop.sh &lt;版本号&gt; &lt;tag&gt; &lt;输出目录&gt;</code>，产出签名的 <code>&lt;产品名&gt;.app</code>，发布脚本统一做 dmg</td></tr>
+      <tr><td>发布</td><td><code>release-desktop.yml</code> → melon-ci <code>desktop-release@v2</code>（<code>manifest: oss</code>，要编译 Go 就填 <code>go-version</code>），tag <code>vX.Y.Z</code></td></tr>
+      <tr><td>分发</td><td>对象存储 <code>&lt;桶&gt;/&lt;名&gt;/desktop/</code>：安装包先传、<code>latest.json</code> 最后传；子账号只写这个前缀、不能删（<code>oss-ram-policy.json</code>）；前缀开匿名只读</td></tr>
+      <tr><td>版本清单</td><td><code>latest.json</code>：<code>version</code>、<code>tag</code>、<code>date</code>、<code>notes</code>、<code>files.arm64</code>、<code>sha256.arm64</code>；只增字段不改字段</td></tr>
+      <tr><td>客户端更新</td><td>启动 10 秒后、每 6 小时读一次；版本更大才提示，显示说明，点下载用浏览器打开；可跳过这个版本</td></tr>
+      <tr><td>门户</td><td><code>portal-service.json</code> 加进运维仓库 <code>portal/config.json</code>，<code>pipelines.release.use: desktop-release</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
 <section id="check" data-toc="检查脚本">
   <h2>检查脚本</h2>
   <pre>~/.claude/skills/project-init/scripts/check.sh &lt;项目目录&gt;</pre>

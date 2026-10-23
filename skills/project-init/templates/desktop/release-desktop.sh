@@ -7,6 +7,10 @@
 #   scripts/release-desktop.sh oss-test             # 检查对象存储配置：上传一个小文件，再从公网读回来
 #
 # 发布只在线上：GitHub 上点「发布」（.github/workflows/release-desktop.yml → melon-ci desktop-release，manifest: oss）。
+# 打包按技术栈二选一（项目基线「桌面应用」）：
+#   · 默认 Electron：electron-builder 直接出 dmg，版本号 -c.extraMetadata.version 注入
+#   · 项目有 scripts/package-desktop.sh（走「技术选型例外」的原生 App 等）：交给它出 dist/<PRODUCT>.app，这里统一做成 dmg
+#     约定见模板 package-desktop.sh：参数 <版本号> <tag> <输出目录>；版本号构建时注入、不改源码；产出至少 ad-hoc 签名的 .app
 # 构建前若有 scripts/prebuild.sh（比如从源码编译随应用分发的工具），会在 tag 的内容里先运行它；
 # 打包后若有 scripts/verify-build.sh <dist>，用它检查产物（缺文件就不发布）。
 # 变量后紧跟中文全角字符一律写 ${…}（macOS 自带 bash 3.2 会把全角字节当成变量名）。
@@ -16,7 +20,7 @@ cd "$(git rev-parse --show-toplevel)"
 source scripts/lib-release.sh
 
 ARCH=arm64
-PRODUCT=__PRODUCT__                                           # electron-builder 的 productName（安装包名 <PRODUCT>-<版本>-arm64.dmg）
+PRODUCT=__PRODUCT__                                           # 产品名：Electron 的 productName / 原生 App 的 <PRODUCT>.app（安装包名 <PRODUCT>-<版本>-arm64.dmg）
 OSS_ENDPOINT="${OSS_ENDPOINT:-oss-cn-beijing.aliyuncs.com}"
 OSS_PREFIX="${OSS_PREFIX:-__NAME__/desktop}"                  # 子账号只能写这个前缀；公网只读也只开这个前缀
 oss_ready() { [[ -n "${OSS_BUCKET:-}" && -n "${OSS_ACCESS_KEY_ID:-}" && -n "${OSS_ACCESS_KEY_SECRET:-}" ]]; }
@@ -30,12 +34,19 @@ build() {   # build <tag> <输出目录>
   local src; src="$(mktemp -d)"
   checkout_tag "$src"
   echo "▸ 构建 $PRODUCT ${VER}（${ARCH}）"
-  # 每一步都显式判失败：macOS 自带 bash 3.2 有时报错却以 0 退出，光靠 set -e 拦不住（2026-10-15 Vine v0.1.0 踩过）
-  ( cd "$src" && pnpm install --frozen-lockfile --silent ) || die "安装依赖失败"
-  if [[ -f "$src/scripts/prebuild.sh" ]]; then ( cd "$src" && bash scripts/prebuild.sh ) || die "构建前准备（scripts/prebuild.sh）失败"; fi
-  ( cd "$src" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never ) || die "electron-builder 打包失败"
-  if [[ -f "$src/scripts/verify-build.sh" ]]; then bash "$src/scripts/verify-build.sh" "$src/dist" || die "产物检查（scripts/verify-build.sh）没通过"; fi
+  # 每一步都显式判失败：macOS 自带 bash 3.2 有时报错却以 0 退出，光靠 set -e 拦不住
   local dmg="$PRODUCT-$VER-$ARCH.dmg"
+  if [[ -f "$src/scripts/prebuild.sh" ]]; then ( cd "$src" && bash scripts/prebuild.sh ) || die "构建前准备（scripts/prebuild.sh）失败"; fi
+  if [[ -f "$src/scripts/package-desktop.sh" ]]; then
+    ( cd "$src" && bash scripts/package-desktop.sh "$VER" "$TAG" "$src/dist" ) || die "打包（scripts/package-desktop.sh）失败"
+    [[ -d "$src/dist/$PRODUCT.app" ]] || die "scripts/package-desktop.sh 没有产出 dist/$PRODUCT.app"
+    codesign --verify --strict "$src/dist/$PRODUCT.app" || die "$PRODUCT.app 签名校验没通过（至少要 ad-hoc 签名：codesign --sign -）"
+    make_dmg "$src/dist/$PRODUCT.app" "$src/dist/$dmg"
+  else
+    ( cd "$src" && pnpm install --frozen-lockfile --silent ) || die "安装依赖失败"
+    ( cd "$src" && CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --$ARCH -c.extraMetadata.version="$VER" --publish never ) || die "electron-builder 打包失败"
+  fi
+  if [[ -f "$src/scripts/verify-build.sh" ]]; then bash "$src/scripts/verify-build.sh" "$src/dist" || die "产物检查（scripts/verify-build.sh）没通过"; fi
   [[ -f "$src/dist/$dmg" ]] || die "没有生成 $dmg"
   mv "$src/dist/$dmg" "$out/"
   local sum; sum="$(shasum -a 256 "$out/$dmg" | cut -d' ' -f1)"
@@ -44,6 +55,14 @@ build() {   # build <tag> <输出目录>
         '{version:$v, tag:$t, date:$d, notes:$n, files:{($a):$f}, sha256:{($a):$s}}' > "$out/latest.json"
   rm -rf "$src"
   echo "▸ 产物：$out/${dmg}（$(du -h "$out/$dmg" | cut -f1)，sha256 ${sum:0:12}…）"
+}
+
+# 原生 .app → dmg（拖到「应用程序」安装）：只用系统自带的 hdiutil
+make_dmg() {   # make_dmg <xxx.app> <输出.dmg>
+  local app="$1" dmg="$2" stage; stage="$(mktemp -d)"
+  cp -R "$app" "$stage/" && ln -s /Applications "$stage/Applications"
+  hdiutil create -volname "$PRODUCT" -srcfolder "$stage" -fs HFS+ -format UDZO -ov "$dmg" >/dev/null || die "hdiutil 做 dmg 失败"
+  rm -rf "$stage"
 }
 
 # 上传到 OSS（V1 签名，只用 curl + openssl）

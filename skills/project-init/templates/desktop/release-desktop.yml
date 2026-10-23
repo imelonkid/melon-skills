@@ -27,5 +27,6 @@ jobs:
       manifest: oss                                   # 没有服务端：版本清单也放对象存储
       bump: ${{ inputs.bump }}
       emergency: ${{ inputs.emergency }}
-      # go-version: "1.24"                            # 构建要编译 Go 工具时打开（scripts/prebuild.sh）
+      # go-version: "<版本，与 go.mod 一致>"           # 构建要编译 Go 时打开（scripts/prebuild.sh 或 scripts/package-desktop.sh）
+      # node-version: "22"                            # 构建用到的 Node 版本（默认 20）
     secrets: inherit

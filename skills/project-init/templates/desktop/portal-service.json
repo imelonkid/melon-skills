@@ -1,0 +1,26 @@
+{
+  "name": "__NAME__",
+  "repo": "imelonkid/__NAME__",
+  "desc": "<一句话说明>（桌面应用，Mac）",
+  "ends": [
+    {
+      "end": "desktop",
+      "label": "桌面端",
+      "prefix": "v",
+      "release": "release-desktop.yml",
+      "channel": "OSS <桶>/__NAME__/desktop → 客户端提示更新",
+      "online": { "url": "https://<桶>.<地域端点>/__NAME__/desktop/latest.json", "field": "tag" },
+      "pipelines": {
+        "release": {
+          "use": "desktop-release",
+          "bind": { "gate": { "job": "门禁与打 tag" }, "build": { "job": "构建（macOS）" }, "deploy": { "job": "发布" } }
+        }
+      }
+    }
+  ],
+  "links": [
+    { "name": "下载站", "url": "https://<桶>.<地域端点>/__NAME__/desktop/latest.json" },
+    { "name": "Actions", "url": "https://github.com/imelonkid/__NAME__/actions" }
+  ],
+  "ci": { "workflow": "ci.yml", "pipeline": { "use": "ci" } }
+}

@@ -92,8 +92,9 @@ for c in deploy/docker-compose.prod.yml docker-compose.prod.yml; do [[ -f "$P/$c
 if [[ -z "$C" && -f "$OPS/registry/services/$NAME.yaml" ]] && grep -qE '^\s+compose:' "$OPS/registry/services/$NAME.yaml"; then
   echo "▸ 部署"
   bad "注册表登记为服务，但仓库没有 deploy/docker-compose.prod.yml"
-elif [[ -z "$C" && -f "$P/package.json" ]] && grep -q '"electron-builder"' "$P/package.json"; then
-  # 基线 · 桌面应用（独立客户端）：发布走 melon-ci desktop-release（manifest: oss），版本号构建时注入
+elif [[ -z "$C" ]] && { [[ -f "$P/.github/workflows/release-desktop.yml" || -f "$P/scripts/package-desktop.sh" ]] || { [[ -f "$P/package.json" ]] && grep -q '"electron-builder"' "$P/package.json"; }; }; then
+  # 基线 · 桌面应用（独立客户端）：发布走 melon-ci desktop-release（manifest: oss），版本号构建时注入。
+  # Electron 默认；走技术选型例外的（如原生 App）用打包钩子 scripts/package-desktop.sh
   echo "▸ 桌面应用"
   f="$P/.github/workflows/release-desktop.yml"
   if [[ -f "$f" ]]; then
@@ -102,8 +103,15 @@ elif [[ -z "$C" && -f "$P/package.json" ]] && grep -q '"electron-builder"' "$P/p
   else bad "缺 .github/workflows/release-desktop.yml（模板 templates/desktop/）"; fi
   [[ -f "$P/scripts/release-desktop.sh" ]] && ok "scripts/release-desktop.sh" || bad "缺 scripts/release-desktop.sh（模板 templates/desktop/）"
   [[ -f "$P/scripts/lib-release.sh" ]] && ok "scripts/lib-release.sh" || bad "缺 scripts/lib-release.sh（模板 templates/multi-end/）"
-  grep -q 'extraMetadata.version' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "版本号构建时注入" || tip "发布脚本没有 -c.extraMetadata.version（版本号要在构建时注入）"
-  grep -qE '"version":[[:space:]]*"0\.0\.0"' "$P/package.json" && ok "package.json version 固定 0.0.0" || tip "package.json 的 version 应固定 0.0.0（真实版本 = tag，构建时注入）"
+  grep -q 'package-desktop.sh' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "发布脚本支持打包钩子（基线 v3 模板）" || tip "scripts/release-desktop.sh 是旧模板：换成 templates/desktop/release-desktop.sh（支持 scripts/package-desktop.sh）"
+  if [[ -f "$P/scripts/package-desktop.sh" ]]; then
+    ok "打包钩子 scripts/package-desktop.sh（技术选型例外）"
+    grep -q '技术选型例外' "$P/README.md" 2>/dev/null && ok "README 写了技术选型例外" || tip "不用 Electron 要在 README「技术选型例外」写明"
+    grep -qE 'CFBundleShortVersionString' "$P/scripts/package-desktop.sh" && ok "打包时注入版本号（Info.plist）" || tip "scripts/package-desktop.sh 要把版本号注入 Info.plist（CFBundleShortVersionString / CFBundleVersion）"
+  else
+    grep -q 'extraMetadata.version' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "版本号构建时注入" || tip "发布脚本没有 -c.extraMetadata.version（版本号要在构建时注入）"
+    grep -qE '"version":[[:space:]]*"0\.0\.0"' "$P/package.json" 2>/dev/null && ok "package.json version 固定 0.0.0" || tip "package.json 的 version 应固定 0.0.0（真实版本 = tag，构建时注入）"
+  fi
   [[ -f "$P/.github/workflows/ci.yml" ]] && ok "ci.yml" || bad "缺 .github/workflows/ci.yml（melon-ci pr-check：发布门禁要求 main 的 CI 全绿）"
   [[ -f "$P/scripts/ci-test.sh" ]] && ok "scripts/ci-test.sh" || tip "缺 scripts/ci-test.sh（模板 templates/desktop/ci-test.sh）"
 elif [[ -z "$C" ]]; then

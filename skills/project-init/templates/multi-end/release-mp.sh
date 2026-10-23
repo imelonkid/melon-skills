@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 source scripts/lib-release.sh
 
-SVC=__NAME__                      # 部署入口里登记的服务名（如 yuxian-mp）
+SVC=__NAME__                      # 部署入口里登记的服务名（如 <名>-mp）
 APP_DIR="${APP_DIR:-apps/miniapp}"
 OUT_DIR="${OUT_DIR:-dist/build/mp-weixin}"   # uni-app：npm run build:mp-weixin 的输出
 DEPLOY_SSH="${DEPLOY_SSH:-mp-target}"

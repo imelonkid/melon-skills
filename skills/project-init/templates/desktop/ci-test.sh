@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 项目基线 · 桌面应用的 CI 测试入口（melon-ci pr-check：scripts/ci-test.sh 存在就跑；本机也能跑）。
-# 只跑不需要图形界面的测试（node --test）；不碰外网和真实数据。
+# 只跑不需要图形界面的测试（node --test）；不碰外网和真实数据。这是 Electron 的写法：
+# 其他技术栈（技术选型例外）换成它的检查与单测，如 Go：(cd core && go vet ./... && go test ./...)；只能在 macOS 编译的部分交给发布流水线。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "▸ 安装依赖（不下载 Electron 二进制：测试用不到）"

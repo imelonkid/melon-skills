@@ -1,0 +1,10 @@
+{
+  "Version": "1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["oss:PutObject"],
+      "Resource": ["acs:oss:oss-<地域>:<主账号ID>:<桶>/__NAME__/desktop/*"]
+    }
+  ]
+}

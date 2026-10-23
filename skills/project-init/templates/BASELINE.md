@@ -25,7 +25,7 @@
 | 注册表 `registry/services/<名>.yaml`（字段以 `_schema.yaml` 为准） | ✓ | ✓ | | §1、§9.1 |
 | 登记到门户（运维仓库 `portal/config.json`）：每一端按端类型选发布流水线 `ends[].pipelines.release.use`——服务端 `server-release`、桌面端 `desktop-release`、小程序 `mp-release` | ✓ | ✓ | | §9.3 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
-| 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404；样板：yuxian `admin/auth/sso`（运维规范 §6.6） | ✓ | | | §6 |
+| 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404（运维规范 §6.6） | ✓ | | | §6 |
 | 日志与错误上报（运维仓库 `docs/11-logging.md`）：stdout 一行一条 JSON（`ts` / `level` / `service` / `version` / `trace_id` / `event` / `msg`），请求日志一请求一条；追踪号 `X-Request-Id`（响应头回传，错误响应体带 `traceId`）；密码、token、手机号等脱敏；客户端只报 warn / error，gzip 批量发 `POST /api/v1/client-logs`。Node 服务端、浏览器、uni-app **用公共包 `@imelonkid/common`**（钉确切版本；各端 `.npmrc` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；Dockerfile 用 BuildKit secret `npm_token`；发布表单加 `packages: read`；包设置里授予本仓库读权限）。其他技术栈按规范自行实现 | ✓ | | | §8 |
 | **第三方镜像**（数据库、缓存等）：也从镜像仓库拉，写 `<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`。先在运维仓库 `registry/mirror-images.txt` 登记，「同步第三方镜像」用 skopeo 复制到镜像仓库；**摘要以同步结果（同步摘要页）为准**，不一定等于 Docker Hub 上的（个别官方镜像镜像仓库只收 linux/amd64）。**不直接用 Docker Hub**：国内节点拉不动，旧摘要会被回收，灾备重建会失败 | ✓ | ✓ | | §5.1、§5.2 |
 | **用户上传的文件**（头像、图片等）一律放对象存储（OSS / COS，S3 兼容接口），**不存服务的数据目录**；子账号按前缀最小权限（只能读写本服务的前缀）、**没有删除权限**；阿里云 RAM 策略的资源用新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<前缀>/*`，配完先实测上传 | ✓ | | | §5.8 |
@@ -76,14 +76,14 @@
 | 默认 | **自建**：Docker 跑官方 `mysql:8` 镜像（经镜像仓库、钉摘要），不额外购买云数据库 |
 | 实例 | **每个节点一个共享实例**，每个项目**独立的库 + 独立账号**（只授权自己的库；备份另建只读账号）。不按项目各起一个 MySQL——每个实例约 400MB 内存，节点都是 2C / 3.5G～7.8G 的小机器 |
 | 共享实例的位置 | 节点上的平台组件（运维仓库管理，像日志采集一样按节点安装），只在节点内网 / wg 上监听，不开公网端口；项目 compose 只写连接串，不再自带 mysql 服务 |
-| 过渡 | 节点上只有一个项目用 MySQL 时，允许暂时放在该项目自己的 compose 里（现状：yuxian 在 ali-1）；**第二个项目上同一节点前**，先迁成共享实例 |
+| 过渡 | 节点上只有一个项目用 MySQL 时，允许暂时放在该项目自己的 compose 里；**第二个项目上同一节点前**，先迁成共享实例 |
 | 备份与灾备 | 按规范 §7：只读账号 `mysqldump --single-transaction` 定时备份进异地对象存储；T0 / L2 用 binlog 复制到备站点；定期做恢复演练 |
 | 何时改用云数据库（阿里云 RDS / 腾讯云 CDB） | 满足任一条：① 有真实用户与收入，丢数据的代价超过云数据库月费；② L2 热备（binlog 复制到备站点）自己维护跟不上；③ 节点内存不够。改用云数据库只换连接串（Prisma 不变），并在注册表与运维仓库登记 |
 
 ### 例外与迁移
 
 - **例外**：上表没有、或要用「默认 / 允许」以外的方案，在项目 README「技术选型例外」写明：用什么、为什么、谁同意的（用户本人）。没有例外记录就按默认。
-- **平台项目**按 `docs/09-projects.md` 自己的约定（门户：Python 标准库 + 无构建 Vue；Vine：Electron；melon-common：TypeScript 库），也要在各自 README 写明。
+- **平台项目**按 `docs/09-projects.md` 里各自的约定，也要在各自 README 写明。
 - **存量项目不合规的**：在注册表 `known_gaps` 记一条「技术选型：现状 → 目标」，大改该端时迁，不为迁移单独停功能开发。
 - `check.sh` 对能机械判断的给 △（服务端不是 NestJS、运营后台不是 Vue、服务端镜像不是 Node 22 等）。
 
@@ -103,7 +103,7 @@
 
 ### 小程序端（多端项目里的一端，2026-10-15）
 
-适用：服务端 + 微信小程序（uni-app 等）同一仓库，如 yuxian。小程序装在用户手机上、要过微信审核、收不回来，所以和服务端分开发布。模板 `templates/multi-end/release-mp.sh`、`release-mp.yml`。
+适用：服务端 + 微信小程序（uni-app 等）同一仓库。小程序装在用户手机上、要过微信审核、收不回来，所以和服务端分开发布。模板 `templates/multi-end/release-mp.sh`、`release-mp.yml`。
 
 | 项 | 要求 |
 |---|---|
@@ -119,17 +119,19 @@
 
 ## 桌面应用（独立客户端，没有自己的服务端）
 
-适用：只有桌面端、靠别的平台接口工作的客户端（如内网接入客户端 Vine）。和服务有自己的发布方式；与「多端」里的桌面端区别是：没有服务端下载站，版本清单也放对象存储。模板在 `templates/desktop/`。
+适用：只有桌面端、靠别的平台接口工作的客户端。与「多端」里的桌面端区别是：没有服务端下载站，安装包和版本清单都放对象存储。模板在 `templates/desktop/`。
 
 | 项 | 要求 |
 |---|---|
-| 技术栈 | Electron + electron-builder（Mac arm64 先行）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`） |
-| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿） |
-| 发布脚本 | `scripts/release-desktop.sh`（模板，`build` / `publish` / `oss-test`）+ `scripts/lib-release.sh`（`templates/multi-end/`）；构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
-| 分发 | 安装包与 `latest.json`（含 sha256）都在对象存储 `<名>/desktop/`，安装包先传、清单最后传；GitHub Release 存档。子账号**只能写**这个前缀，公网**只读**也只开这个前缀 |
-| 更新 | 客户端启动后与每 6 小时读 `latest.json`，有新版提示下载（没有 Apple 开发者签名做不了静默更新，写进 README 的已知限制） |
-| production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`）。不需要部署入口 |
-| CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`（模板：语法检查 + `node --test`，不下载 Electron） |
+| 技术栈 | 默认 Electron + electron-builder（Mac arm64 先行；界面 Vue 3 + Vite）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`）。走「技术选型例外」的（如原生 App）照样用下面的发布与分发，只是打包换成打包钩子 |
+| 打包 | 发布脚本 `scripts/release-desktop.sh`（模板）按技术栈二选一：默认 electron-builder 出 dmg；**项目有 `scripts/package-desktop.sh`（模板）就交给它**——参数 `<版本号> <tag> <输出目录>`，产出至少 ad-hoc 签名的 `<产品名>.app`，版本号构建时注入（`Info.plist` 的 `CFBundleShortVersionString` = 版本号、`CFBundleVersion` = tag；随应用分发的命令行工具同样注入），发布脚本统一做成 dmg。构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
+| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
+| 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
+| 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
+| 客户端更新 | 启动 10 秒后、之后每 6 小时读一次 `latest.json`（地址写在客户端里，不经服务端）；`version` 按语义化版本**大于**自己的版本（构建时注入的那个）才提示，显示 `notes`，点「下载」用系统浏览器打开 `files.arm64`；可以「跳过这个版本」；读失败静默、下次再试。没有 Apple 开发者签名做不了静默安装，写进 README 的已知限制 |
+| production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`，值存 1Password `ops/<名>/prod`）。不需要部署入口 |
+| CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`：只跑不需要图形界面的检查与测试，不碰外网和真实数据。模板是 Electron 的（语法检查 + `node --test`，不下载 Electron）；其他技术栈换成它的单测（如 `go vet` + `go test`）。PR 检查跑在 Linux 上，只能在 macOS 编译的部分交给发布流水线 |
+| 门户 | 运维仓库 `portal/config.json` 的 `services` 加一条（模板 `portal-service.json`：`pipelines.release.use: desktop-release`，任务名按 melon-ci `desktop-release`；`online` 读 `latest.json` 的 `tag`），`portal/push.sh` 推上去；门户令牌的仓库范围包含本仓库 |
 | 注册表 | 不部署到服务器，不登记 `registry/services/`；它依赖的服务端接口写进 CLAUDE.md「契约」 |
 
 ## 基线升级
@@ -139,6 +141,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
 
 - **v3 增补**（2026-10-21 晚）：`templates/stacks/node`（原生 Node + `src/server.js`）换成 **`templates/stacks/nestjs`**——NestJS 官方脚手架为底的完整骨架（ESM、Vitest、oxlint、Prisma 7 + MySQL、统一响应体与错误码、`/health`、Dockerfile、起临时 MySQL 的 ci-test.sh），已在 node:22 与 MySQL 8.4 上跑通。测试与代码检查跟随官方脚手架：服务端 **Vitest + oxlint**（不是 Jest + ESLint）；`ci.yml` 传 `node-version: "22"`
 

@@ -35,7 +35,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 | 4 | 默认分支 `main`；提交信息 `<类型>(<范围>): <中文描述>`；**PR 一律以 `main` 为目标**，不开叠加 PR（以另一个 PR 的分支为目标） | — |
 | 5 | **发布与回滚一律走 tag**：每次发版打新的 `vX.Y.Z`，线上版本永远是某个 tag；回滚 = 上线一个旧 tag。没有 tag 的代码不上线 | §5.1、§9.3 |
 | 6 | **服务必须注册**：不在 `registry/services/` 里的服务不允许上线 | §1、§9.1 |
-| 7 | **必须有 `CLAUDE.md`，且有「## 边界（强制）」一节**：本项目负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束，越界的需求先停下来确认。**业务项目只写自己的边界**（如产品与它依赖的引擎各管什么），不写平台分工；**平台项目**（melon-ops、melon-portal、melon-vine、melon-ci、melon-skills、melon-common）的边界以 ops 仓库 `docs/09-projects.md` 为准 | — |
+| 7 | **必须有 `CLAUDE.md`，且有「## 边界（强制）」一节**：本项目负责什么、不负责什么（归谁）、与其他项目的关系。它是 Claude 在本项目开发的强制约束，越界的需求先停下来确认。**业务项目只写自己的边界**（如产品与它依赖的引擎各管什么），不写平台分工；**平台项目**（运维仓库 `docs/09-projects.md` 里登记的）的边界以 ops 仓库 `docs/09-projects.md` 为准 | — |
 
 ## 流程
 
@@ -129,7 +129,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 - **只在内网**：`<服务>.in.melonkid.cn`，经网关统一认证（设备 + 门户会话 + 门户分配的项目权限）；公网入口**清掉 `X-Melon-*` 请求头**、管理路径返回 404。
 - **不做自己的账号密码**：运营人员就是门户账号。凭网关转来的门户身份请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role` 统一登录，按门户账号 id（`X-Melon-Uid`）关联本地管理员，第一次进来自动建；业务自己的密码登录默认关，只留应急开关。
-- 样板：yuxian `admin/auth/sso`。入口登记在门户「常用站点 · 管理界面」，网关与入口配置在运维仓库，**不在本项目里写**。
+- 后端提供一个统一登录接口（如 `POST /api/v1/admin/auth/sso`）：读身份头、按门户账号 id 找或建本地管理员、签发自己的会话。入口登记在门户「常用站点 · 管理界面」，网关与入口配置在运维仓库，**不在本项目里写**。
 - **前端用 Vue 3**（基线「技术架构与选型」）：有构建用 Vite + Vue 3 + Element Plus；没有构建步骤的小工具用固定版本的 `vue.global.prod.js` 放进仓库（不从外网 CDN 加载）。不用拼 HTML 字符串 + `innerHTML` 的写法（漏一处转义就是 XSS，整块重画还会丢滚动和展开状态）。特殊场景用别的，在 README「技术选型例外」写明用什么、为什么、谁同意的。
 
 #### 密钥（§5.4）
@@ -185,7 +185,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 #### 桌面应用（独立客户端，没有自己的服务端）
 
-按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；`package.json` 的 `version` 固定 `0.0.0`。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。不登记注册表。
+按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；Electron 项目 `package.json` 的 `version` 固定 `0.0.0`；**不用 Electron 的（技术选型例外）加 `templates/desktop/package-desktop.sh` 写本项目的打包步骤**，`ci-test.sh` 换成本技术栈的测试；客户端按「客户端更新」读 `latest.json`（字段见 `latest.json.example`）；门户登记用 `portal-service.json`；子账号策略用 `oss-ram-policy.json`（换 `<地域>`、`<主账号ID>`、`<桶>`）。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。不登记注册表。
 
 ### 4. 首次提交并推到 GitHub
 
@@ -224,7 +224,7 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
 注意：用 `GITHUB_TOKEN` 推的 tag 不会触发其他流水线，所以发布是「门禁 → 打 tag → 构建 → 部署」在同一条流水线里接力；表单要显式授予权限（`contents: write, checks: read, deployments: write`，用私有包 `@imelonkid/*` 的再加 `packages: read`），可复用流水线不能自己提权。
 
 5. **README「GitHub production 环境」**：上面每写入一项变量或 Secret，就在这张表里记一行（用途、对应运维侧的哪条登记、谁写入）——GitHub 上没有备注，只有这里说得清。
-6. **登记到门户**（每一端的发布流水线都要，服务端、桌面端、小程序端一样）：运维仓库 `portal/config.json` 的 `services` 加一条——`ends` 里每端写 `prefix`、`release` / `rollback` 表单文件名、`channel`、能探到线上版本就写 `online`，`pipelines` **按端类型选流水线**——`pipelines.release.use`：服务端 `server-release`（末尾健康检查探 `/health`）、桌面端 `desktop-release`（清单核对）、小程序 `mp-release`（提审、发布上线两个人工确认），绑定任务名照同文件已有条目；再加 `ci`。门户的 GitHub 令牌（细粒度，`melon-portal`）的 Repository access 要包含这个仓库。改完 `portal/push.sh`，不用重启门户。**只配了 GitHub 表单、门户里看不到 = 没接完**。
+6. **登记到门户**（每一端的发布流水线都要，服务端、桌面端、小程序端一样）：运维仓库 `portal/config.json` 的 `services` 加一条——`ends` 里每端写 `prefix`、`release` / `rollback` 表单文件名、`channel`、能探到线上版本就写 `online`，`pipelines` **按端类型选流水线**——`pipelines.release.use`：服务端 `server-release`（末尾健康检查探 `/health`）、桌面端 `desktop-release`（清单核对）、小程序 `mp-release`（提审、发布上线两个人工确认），绑定任务名按 melon-ci 对应流水线的任务名（桌面端见 `templates/desktop/portal-service.json`）；再加 `ci`。门户用的 GitHub 细粒度令牌的 Repository access 要包含这个仓库。改完 `portal/push.sh`，不用重启门户。**只配了 GitHub 表单、门户里看不到 = 没接完**。
 
 ### 5. 注册（服务与静态站）
 
