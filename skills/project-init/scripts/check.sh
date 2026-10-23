@@ -75,6 +75,10 @@ fi
 
 echo "▸ 文件"
 [[ -f "$P/README.md" ]] && ok README.md || tip "缺 README.md"
+# 脚本里变量后紧跟中文全角字符（"$APP（"）：macOS 自带 bash 3.2 在 UTF-8 环境下会把全角字节当成变量名，
+# CI 的 macOS 构建机上直接报 unbound variable（本机用 Homebrew bash 5 发现不了），一律写 ${…}
+sh_bad="$(cd "$P" && git ls-files -z '*.sh' 2>/dev/null | xargs -0 perl -ne 'print "$ARGV:$.\n" if /\$[A-Za-z_][A-Za-z0-9_]*[^\x00-\x7F]/; close ARGV if eof' 2>/dev/null | head -5)"
+[[ -z "$sh_bad" ]] && ok "脚本变量写法（兼容 bash 3.2）" || bad "脚本里变量后紧跟全角字符，改成 \${…}：$(echo $sh_bad)"
 # CLAUDE.md 是 Claude 在本项目开发的强制约束：必须存在，且有「## 边界」一节（负责 / 不负责 / 与其他项目的关系）。
 # 允许 CLAUDE.md 是指向 AGENTS.md 的链接，或用 @AGENTS.md 引用它
 if [[ -f "$P/CLAUDE.md" ]]; then

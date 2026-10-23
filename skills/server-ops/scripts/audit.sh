@@ -47,7 +47,7 @@ for p in ${=OPS_SITES}; do
     *) warn "$h PermitRootLogin = $(g permitrootlogin)（建议 prohibit-password）" ;;
   esac
   au=$(g allowusers); [[ -n "$au" ]] && ok "$h AllowUsers = $au" || warn "$h 未设 AllowUsers"
-  mt=$(g maxauthtries); [[ "$mt" -le 3 ]] && ok "$h MaxAuthTries = $mt" || warn "$h MaxAuthTries = $mt（建议 3）"
+  mt=$(g maxauthtries); [[ "$mt" -le 3 ]] && ok "$h MaxAuthTries = $mt" || warn "$h MaxAuthTries = ${mt}（建议 3）"
 done
 
 print
@@ -90,7 +90,7 @@ for p in ${=OPS_SITES}; do
   while read -r n pol; do
     [[ -z "$n" ]] && continue
     [[ "$pol" == "always" || "$pol" == "unless-stopped" ]] \
-      || { warn "$h ${n#/} 的 restart=$pol（重启后不会自动拉起）"; ((restart_bad++)); ((issues++)); }
+      || { warn "$h ${n#/} 的 restart=${pol}（重启后不会自动拉起）"; ((restart_bad++)); ((issues++)); }
   done <<< "$out"
 done
 (( restart_bad == 0 )) && ok "所有运行中的容器都会自动重启"
