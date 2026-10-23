@@ -15,7 +15,8 @@
           "use": "desktop-release",
           "bind": { "gate": { "job": "门禁与打 tag" }, "build": { "job": "构建（macOS）" }, "deploy": { "job": "发布" } }
         }
-      }
+      },
+      "paths": ["<产品代码目录>/", "<打包与构建脚本>"]
     }
   ],
   "links": [
