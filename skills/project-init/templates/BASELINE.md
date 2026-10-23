@@ -23,7 +23,7 @@
 | **镜像必须进镜像仓库**：CI 构建 → 推镜像仓库（用哪家是平台事实，见运维仓库 `registry/sites.yaml`）→ 节点部署入口按摘要拉取（melon-ci `@v2` 没配就失败，不再经 SSH 上传） | ✓ | ✓ | | §5.1 |
 | GitHub 仓库设置（`templates/github/settings.json`，`scripts/github-apply.sh` 应用 / `--check` 核对）：分支保护、合并方式、production 环境 | ✓ | ✓ | | §9.3 |
 | 注册表 `registry/services/<名>.yaml`（字段以 `_schema.yaml` 为准） | ✓ | ✓ | | §1、§9.1 |
-| 登记到门户（运维仓库 `portal/config.json`）：每一端按端类型选发布流水线 `ends[].pipelines.release.use`——服务端 `server-release`、桌面端 `desktop-release`、小程序 `mp-release`。**每一端都登记 `ends[].paths`**（这一端产物的代码目录与构建脚本，按前缀匹配）：变更合并后门户按 PR 改动的文件决定发哪几端，只改文档、CI、开发工具的不发布；不登记时单端项目任何合并都会发布 | ✓ | ✓ | | §9.3 |
+| 登记到门户（运维仓库 `portal/config.json`）：每一端按端类型选发布流水线 `ends[].pipelines.release.use`——服务端 `server-release`、桌面端 `desktop-release`、小程序 `mp-release`。**每一端都登记 `ends[].paths`**（这一端产物的代码目录与构建脚本，按前缀匹配，变更记录据此关联发布）和 `"auto_release": false`——**变更合并后不自动发布**，发布一律在门户流水线上由人点 | ✓ | ✓ | | §9.3 |
 | 可观测：JSON 日志带 trace_id、OTel（`OTEL_*` 由 compose 注入）、指标命名 `<服务>_<领域>_<事件>_total` | ✓ | | | §8 |
 | 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404（运维规范 §6.6） | ✓ | | | §6 |
 | 日志与错误上报（运维仓库 `docs/11-logging.md`）：stdout 一行一条 JSON（`ts` / `level` / `service` / `version` / `trace_id` / `event` / `msg`），请求日志一请求一条；追踪号 `X-Request-Id`（响应头回传，错误响应体带 `traceId`）；密码、token、手机号等脱敏；客户端只报 warn / error，gzip 批量发 `POST /api/v1/client-logs`。Node 服务端、浏览器、uni-app **用公共包 `@imelonkid/common`**（钉确切版本；各端 `.npmrc` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；Dockerfile 用 BuildKit secret `npm_token`；发布表单加 `packages: read`；包设置里授予本仓库读权限）。其他技术栈按规范自行实现 | ✓ | | | §8 |
@@ -143,7 +143,7 @@
 
 ## 变更
 
-- **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。门户登记**每一端都要写 `paths`**（模板已加），否则只改文档也会触发自动发布。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
+- **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。门户登记每一端都写 `paths` 与 `"auto_release": false`（模板已加）：变更合并后不自动发布，发布在门户流水线上点。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
 
 - **v3 增补**（2026-10-21 晚）：`templates/stacks/node`（原生 Node + `src/server.js`）换成 **`templates/stacks/nestjs`**——NestJS 官方脚手架为底的完整骨架（ESM、Vitest、oxlint、Prisma 7 + MySQL、统一响应体与错误码、`/health`、Dockerfile、起临时 MySQL 的 ci-test.sh），已在 node:22 与 MySQL 8.4 上跑通。测试与代码检查跟随官方脚手架：服务端 **Vitest + oxlint**（不是 Jest + ESLint）；`ci.yml` 传 `node-version: "22"`
 
