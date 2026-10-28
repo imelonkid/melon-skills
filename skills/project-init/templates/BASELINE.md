@@ -8,7 +8,7 @@
 
 | 项 | 服务 | 静态站 | 库或工具 | 规范 |
 |---|---|---|---|---|
-| git + GitHub（默认私有，`main`，提交信息 `<类型>(<范围>): <中文>`）；**PR 一律以 `main` 为目标**，不开叠加 PR（PR 的目标是另一个 PR 的分支：前一个合并后后一个会落空或冲突） | ✓ | ✓ | ✓ | §5.1 |
+| git + GitHub（默认私有，`main`，提交信息 `<类型>(<范围>): <中文>`）；**PR 一律以 `main` 为目标**，不开叠加 PR（PR 的目标是另一个 PR 的分支：前一个合并后后一个会落空或冲突）；**PR 合并或关闭后分支作废**，后续改动从最新 main 开新分支（往已合并的分支再推，提交进不了 main，也不会有新 PR；门户「待处理」会列出这种分支） | ✓ | ✓ | ✓ | §5.1 |
 | `.gitignore`（`templates/gitignore`）：`.env`、`data/`、数据库、私钥不进 git | ✓ | ✓ | ✓ | §5.4、§5.5 |
 | `README.md`（`templates/README.md`，含上线准入、GitHub production 环境清单） | ✓ | ✓ | ✓ | — |
 | `CLAUDE.md`（`templates/CLAUDE.md`）且有「边界（强制）」 | ✓ | ✓ | ✓ | — |
@@ -143,6 +143,7 @@
 
 ## 变更
 
+- **v3 增补**（2026-10-28）：PR 合并或关闭后分支作废，后续改动从最新 main 开新分支（CLAUDE.md 模板同步；门户「待处理」列出「PR 已合并后又有提交」的分支）。已有项目：CLAUDE.md 补这一条
 - **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。门户登记每一端都写 `paths` 与 `"auto_release": false`（模板已加）：变更合并后不自动发布，发布在门户流水线上点。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
 
 - **v3 增补**（2026-10-21 晚）：`templates/stacks/node`（原生 Node + `src/server.js`）换成 **`templates/stacks/nestjs`**——NestJS 官方脚手架为底的完整骨架（ESM、Vitest、oxlint、Prisma 7 + MySQL、统一响应体与错误码、`/health`、Dockerfile、起临时 MySQL 的 ci-test.sh），已在 node:22 与 MySQL 8.4 上跑通。测试与代码检查跟随官方脚手架：服务端 **Vitest + oxlint**（不是 Jest + ESLint）；`ci.yml` 传 `node-version: "22"`

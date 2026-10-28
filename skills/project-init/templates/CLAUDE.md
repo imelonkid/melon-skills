@@ -25,6 +25,7 @@ __本地启动命令__
 - 配置：`.env.example` 列全部变量；真实值在 1Password `ops/__NAME__/prod`；服务器 `.env` 只是副本
 - 服务器操作用 server-ops skill；本项目代码里不写任何主机地址
 - PR 一律以 `main` 为目标，不开叠加 PR
+- **PR 合并（或关闭）后这个分支就作废**：后续改动先 `git switch main && git pull`，再开新分支。已经在旧分支上提交了的，把新提交 `git cherry-pick` 到新分支再开 PR——旧 PR 不会再收新提交，直接推只会悬在分支上进不了 main（squash 合并后旧分支也不能再拿来开 PR，会把合并过的改动再带一遍）
 
 ## 编码约定
 
