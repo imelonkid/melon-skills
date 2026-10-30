@@ -28,6 +28,7 @@
 | 运营后台 / 管理界面：只在内网（`<服务>.in.melonkid.cn`，经网关统一认证：设备 + 门户会话 + 门户分配的项目权限），**不做自己的账号密码**——凭网关转来的门户身份（请求头 `X-Melon-Uid` / `X-Melon-User` / `X-Melon-Emp` / `X-Melon-Name` / `X-Melon-Role`）统一登录，按门户账号 id 关联、第一次进来自动建；公网入口清掉 `X-Melon-*`、管理路径 404（运维规范 §6.6） | ✓ | | | §6 |
 | 日志与错误上报（运维仓库 `docs/11-logging.md`）：stdout 一行一条 JSON（`ts` / `level` / `service` / `version` / `trace_id` / `event` / `msg`），请求日志一请求一条；追踪号 `X-Request-Id`（响应头回传，错误响应体带 `traceId`）；密码、token、手机号等脱敏；客户端只报 warn / error，gzip 批量发 `POST /api/v1/client-logs`。Node 服务端、浏览器、uni-app **用公共包 `@imelonkid/common`**（钉确切版本；各端 `.npmrc` 指向 GitHub Packages、令牌走 `NODE_AUTH_TOKEN`；Dockerfile 用 BuildKit secret `npm_token`；发布表单加 `packages: read`；包设置里授予本仓库读权限）。其他技术栈按规范自行实现 | ✓ | | | §8 |
 | **第三方镜像**（数据库、缓存等）：也从镜像仓库拉，写 `<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`。先在运维仓库 `registry/mirror-images.txt` 登记，「同步第三方镜像」用 skopeo 复制到镜像仓库；**摘要以同步结果（同步摘要页）为准**，不一定等于 Docker Hub 上的（个别官方镜像镜像仓库只收 linux/amd64）。**不直接用 Docker Hub**：国内节点拉不动，旧摘要会被回收，灾备重建会失败 | ✓ | ✓ | | §5.1、§5.2 |
+| **管理命令**（发邀请码、停用账户、查用量这类日常运营操作）：做成服务主程序的子命令（如 `<程序> invite create`），在运行中的容器里执行、直接读写数据目录；一次性凭据（邀请码、临时口令）**只打印到标准输出**，不写日志；参数不含空格、只用 ASCII；不可逆的操作（删数据、导出）不做成管理命令。**不开对公网的管理接口**。调用方式：在运维仓库部署入口的服务 conf 登记 `ADMIN_SERVICE` / `ADMIN_CMD` / `ADMIN_ALLOW`，由运维终端 `melon admin <服务> <子命令…>` 执行（只认登记过的子命令，留操作记录）；不 `ssh … docker exec` | 有就要 | | | §6、§9 |
 | **用户上传的文件**（头像、图片等）一律放对象存储（OSS / COS，S3 兼容接口），**不存服务的数据目录**；子账号按前缀最小权限（只能读写本服务的前缀）、**没有删除权限**；阿里云 RAM 策略的资源用新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<前缀>/*`，配完先实测上传 | ✓ | | | §5.8 |
 
 
@@ -142,6 +143,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-10-30）：新增「管理命令」——服务的日常运营操作做成主程序子命令，经部署入口 `admin`（运维仓库 deploy-agent v9）与运维终端 `melon admin` 执行，子命令在部署入口 conf 的 `ADMIN_ALLOW` 登记。已有服务：有管理命令的登记 `ADMIN_*`；说明里写「`ssh … docker exec`」的改成 `melon admin`
 
 - **v3 增补**（2026-10-28）：PR 合并或关闭后分支作废，后续改动从最新 main 开新分支（CLAUDE.md 模板同步；门户「待处理」列出「PR 已合并后又有提交」的分支）。已有项目：CLAUDE.md 补这一条
 - **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。门户登记每一端都写 `paths` 与 `"auto_release": false`（模板已加）：变更合并后不自动发布，发布在门户流水线上点。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
