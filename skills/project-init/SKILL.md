@@ -79,7 +79,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 | 文件 | 来源 |
 |---|---|
-| `README.md` | `templates/README.md`（含「上线准入」清单） |
+| `README.md` | `templates/README.md`（含「上线准入」清单）。**公开仓库的 README 面向用户**，只写产品本身：上线准入、GitHub production 环境、技术选型例外、发布与回滚这些运维内容放 `docs/MAINTAINING.md`，README 不引用它 |
 | `CLAUDE.md` | `templates/CLAUDE.md`，**必须**填好「边界（强制）」一节（硬性要求 7）；纳管已有项目时也要补上 |
 | `.gitignore` | 第 2 步 |
 | `.melon-baseline` | `templates/melon-baseline`（记录按哪一版基线接入） |
