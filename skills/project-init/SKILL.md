@@ -185,7 +185,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 #### 桌面应用（独立客户端，没有自己的服务端）
 
-按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；Electron 项目 `package.json` 的 `version` 固定 `0.0.0`；**不用 Electron 的（技术选型例外）加 `templates/desktop/package-desktop.sh` 写本项目的打包步骤**，`ci-test.sh` 换成本技术栈的测试；客户端按「客户端更新」读 `latest.json`（字段见 `latest.json.example`）；门户登记用 `portal-service.json`；子账号策略用 `oss-ram-policy.json`（换 `<地域>`、`<主账号ID>`、`<桶>`）。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。不登记注册表。
+按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；Electron 项目 `package.json` 的 `version` 固定 `0.0.0`；**不用 Electron 的（技术选型例外）加 `templates/desktop/package-desktop.sh` 写本项目的打包步骤**，`ci-test.sh` 换成本技术栈的测试；客户端按「客户端更新」读 `latest.json`（字段见 `latest.json.example`）；门户登记用 `portal-service.json`；子账号策略用 `oss-ram-policy.json`（换 `<地域>`、`<主账号ID>`、`<桶>`）。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。要 Developer ID 正式签名与公证（用户打开不被系统拦截）：发布表单打开 `sign: true`，用户本人再写入 `MACOS_CERT_P12_BASE64`、`MACOS_CERT_P12_PASSWORD`、`NOTARY_KEY_P8_BASE64`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`（`--env production`），`package-desktop.sh` 用流水线给的 `SIGN_IDENTITY` 签 `.app`。不登记注册表。
 
 ### 4. 首次提交并推到 GitHub
 

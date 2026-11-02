@@ -5,7 +5,9 @@
 #   scripts/package-desktop.sh <版本号 X.Y.Z> <tag vX.Y.Z> <输出目录>
 #
 # 约定：
-#   1. 在 <输出目录> 产出 __PRODUCT__.app（名字与 release-desktop.sh 的 PRODUCT 一致），至少 ad-hoc 签名（codesign --sign -）
+#   1. 在 <输出目录> 产出 __PRODUCT__.app（名字与 release-desktop.sh 的 PRODUCT 一致），至少 ad-hoc 签名（codesign --sign -）；
+#      环境变量 SIGN_IDENTITY 有值时（发布表单 sign: true，流水线已导入 Developer ID 证书）改用它正式签名：
+#      由内到外签内嵌的程序，每个都带 --options runtime --timestamp（公证的硬性要求）；dmg 的签名与公证由流水线做
 #   2. 版本号构建时注入，不改源码：Info.plist 的 CFBundleShortVersionString = X.Y.Z、CFBundleVersion = tag；
 #      随应用分发的命令行工具同样注入（如 Go：-ldflags "-X main.version=<tag>"）
 #   3. 只用 macOS 构建机自带或流水线装好的工具（Xcode / Swift、Node、按需的 Go）；不下载未钉版本的东西
@@ -19,5 +21,9 @@ mkdir -p "$OUT"
 #   例（SwiftPM 菜单栏 App）：
 #   swift build -c release --arch arm64 --package-path apps/macos
 #   …组装 "$OUT/__PRODUCT__.app/Contents/{MacOS,Resources,Info.plist}"，Info.plist 写入 $VER / $TAG
-#   codesign --force --sign - "$OUT/__PRODUCT__.app"
+#   if [[ -n "${SIGN_IDENTITY:-}" ]]; then
+#     codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$OUT/__PRODUCT__.app"
+#   else
+#     codesign --force --sign - "$OUT/__PRODUCT__.app"
+#   fi
 echo "✗ scripts/package-desktop.sh 还没写本项目的构建步骤" >&2; exit 1
