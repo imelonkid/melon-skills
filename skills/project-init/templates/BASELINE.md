@@ -126,7 +126,7 @@
 |---|---|
 | 技术栈 | 默认 Electron + electron-builder（Mac arm64 先行；界面 Vue 3 + Vite）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`）。走「技术选型例外」的（如原生 App）照样用下面的发布与分发，只是打包换成打包钩子 |
 | 打包 | 发布脚本 `scripts/release-desktop.sh`（模板）按技术栈二选一：默认 electron-builder 出 dmg；**项目有 `scripts/package-desktop.sh`（模板）就交给它**——参数 `<版本号> <tag> <输出目录>`，产出至少 ad-hoc 签名的 `<产品名>.app`，版本号构建时注入（`Info.plist` 的 `CFBundleShortVersionString` = 版本号、`CFBundleVersion` = tag；随应用分发的命令行工具同样注入），发布脚本统一做成 dmg。构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
-| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`，原生 App 要更新的 Xcode / macOS SDK 时填 `runner: macos-15`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
+| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`（Electron 够用）；**原生 App 填 `runner: macos-26`**（与用户在用的 macOS 同代的 SDK）——macOS 按 App 链接的 SDK 决定外观，SDK 旧了在新系统上按旧外观运行（没有液态玻璃、`MenuBarExtra` 面板内容变高时窗口不跟着变、被裁掉），编译能过也看不出来。各构建机默认的 Xcode / SDK 以 GitHub 构建机镜像为准（2026-11 实测：`macos-14` → SDK 14.5，`macos-15` → 15.5，`macos-26` → 26.5），写明版本号、不用 `macos-latest`（会悄悄换）；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
 | 正式签名（可选） | 发布表单 `sign: true`：流水线把 Developer ID 证书导入临时钥匙串，经环境变量 `SIGN_IDENTITY` 交给打包（`package-desktop.sh` 用它签 `.app`，带 `--options runtime --timestamp`；没有就 ad-hoc），构建完再签 dmg、公证、钉票据。用户下载后直接打开、不被系统拦截。**dmg 在 build 之后还会变，安装包的 `sha256` 在 publish 阶段算**（模板已如此）。缺签名 Secret 时流水线直接失败，不悄悄退回 ad-hoc。证书到期前续签并更新 Secret |
 | 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
 | 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
@@ -144,6 +144,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-11-02）：「桌面应用」**原生 App 的构建机用 `macos-26`**——默认 `macos-14`（SDK 14.5）构建的原生 App 在 macOS 26 上按旧外观运行：没有液态玻璃、菜单栏面板展开后被裁，编译和公证都正常、只有装上才看得出来；`macos-15` 默认 SDK 也只有 15.5。`release-desktop.yml` 模板的注释同步。已有原生桌面应用：发布表单加 `runner: macos-26`，发一个 patch
 
 - **v3 增补**（2026-11-02）：**公开仓库的 README 面向用户**——模板 README 里的运维内容（上线准入、GitHub production 环境、技术选型例外、发布与回滚、已知限制）在公开仓库放 `docs/MAINTAINING.md`，README 只写产品、也不链接它；`check.sh` 的「技术选型例外」在 README 或 `docs/MAINTAINING.md` 里都认。已有公开仓库：把 README 里的这些章节挪到 `docs/MAINTAINING.md`
 
