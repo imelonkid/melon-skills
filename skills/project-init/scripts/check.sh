@@ -110,7 +110,7 @@ elif [[ -z "$C" ]] && { [[ -f "$P/.github/workflows/release-desktop.yml" || -f "
   grep -q 'package-desktop.sh' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "发布脚本支持打包钩子（基线 v3 模板）" || tip "scripts/release-desktop.sh 是旧模板：换成 templates/desktop/release-desktop.sh（支持 scripts/package-desktop.sh）"
   if [[ -f "$P/scripts/package-desktop.sh" ]]; then
     ok "打包钩子 scripts/package-desktop.sh（技术选型例外）"
-    grep -q '技术选型例外' "$P/README.md" 2>/dev/null && ok "README 写了技术选型例外" || tip "不用 Electron 要在 README「技术选型例外」写明"
+    grep -qs '技术选型例外' "$P/README.md" "$P/docs/MAINTAINING.md" && ok "写了技术选型例外" || tip "不用 Electron 要在 README「技术选型例外」写明（公开仓库写在 docs/MAINTAINING.md）"
     grep -qE 'CFBundleShortVersionString' "$P/scripts/package-desktop.sh" && ok "打包时注入版本号（Info.plist）" || tip "scripts/package-desktop.sh 要把版本号注入 Info.plist（CFBundleShortVersionString / CFBundleVersion）"
   else
     grep -q 'extraMetadata.version' "$P/scripts/release-desktop.sh" 2>/dev/null && ok "版本号构建时注入" || tip "发布脚本没有 -c.extraMetadata.version（版本号要在构建时注入）"
@@ -216,9 +216,10 @@ else
     ok "不是 Node 项目，不适用"
   fi
 
-  # 技术架构与选型（基线 v3 2026-10-21）：能机械判断的给 △；README 写了「技术选型例外」的不报
+  # 技术架构与选型（基线 v3 2026-10-21）：能机械判断的给 △；写了「技术选型例外」的不报
+  # （README，或公开仓库的维护文档 docs/MAINTAINING.md：公开仓库的 README 面向用户，不放运维内容）
   echo "▸ 技术选型（基线 v3）"
-  exc=0; grep -qs '技术选型例外' "$P/README.md" && { exc=1; ok "README 有「技术选型例外」（按例外记录核对）"; }
+  exc=0; grep -qs '技术选型例外' "$P/README.md" "$P/docs/MAINTAINING.md" && { exc=1; ok "有「技术选型例外」（按例外记录核对）"; }
   for pj in "$P"/apps/admin*/package.json; do
     [[ -f "$pj" ]] || continue
     rel="${pj#"$P/"}"; rel="${rel%/package.json}"

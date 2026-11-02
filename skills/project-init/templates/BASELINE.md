@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | git + GitHub（默认私有，`main`，提交信息 `<类型>(<范围>): <中文>`）；**PR 一律以 `main` 为目标**，不开叠加 PR（PR 的目标是另一个 PR 的分支：前一个合并后后一个会落空或冲突）；**PR 合并或关闭后分支作废**，后续改动从最新 main 开新分支（往已合并的分支再推，提交进不了 main，也不会有新 PR；门户「待处理」会列出这种分支） | ✓ | ✓ | ✓ | §5.1 |
 | `.gitignore`（`templates/gitignore`）：`.env`、`data/`、数据库、私钥不进 git | ✓ | ✓ | ✓ | §5.4、§5.5 |
-| `README.md`（`templates/README.md`，含上线准入、GitHub production 环境清单） | ✓ | ✓ | ✓ | — |
+| `README.md`（`templates/README.md`，含上线准入、GitHub production 环境清单）。**公开仓库的 README 面向用户**，只写产品本身：上线准入、GitHub production 环境、技术选型例外、发布与回滚这些运维内容放 `docs/MAINTAINING.md`，README 不引用它（`check.sh` 两处都认） | ✓ | ✓ | ✓ | — |
 | `CLAUDE.md`（`templates/CLAUDE.md`）且有「边界（强制）」 | ✓ | ✓ | ✓ | — |
 | `.melon-baseline`（`templates/melon-baseline`） | ✓ | ✓ | ✓ | — |
 | `deploy/Dockerfile`（`stacks/<栈>/Dockerfile`；Node 服务 `stacks/nestjs/`）：钉版本、`APP_VERSION` 烘进镜像 | ✓ | ✓ | | §5.1 |
@@ -83,7 +83,7 @@
 
 ### 例外与迁移
 
-- **例外**：上表没有、或要用「默认 / 允许」以外的方案，在项目 README「技术选型例外」写明：用什么、为什么、谁同意的（用户本人）。没有例外记录就按默认。
+- **例外**：上表没有、或要用「默认 / 允许」以外的方案，在项目 README「技术选型例外」写明（公开仓库写在 `docs/MAINTAINING.md`）：用什么、为什么、谁同意的（用户本人）。没有例外记录就按默认。
 - **平台项目**按 `docs/09-projects.md` 里各自的约定，也要在各自 README 写明。
 - **存量项目不合规的**：在注册表 `known_gaps` 记一条「技术选型：现状 → 目标」，大改该端时迁，不为迁移单独停功能开发。
 - `check.sh` 对能机械判断的给 △（服务端不是 NestJS、运营后台不是 Vue、服务端镜像不是 Node 22 等）。
@@ -144,6 +144,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-11-02）：**公开仓库的 README 面向用户**——模板 README 里的运维内容（上线准入、GitHub production 环境、技术选型例外、发布与回滚、已知限制）在公开仓库放 `docs/MAINTAINING.md`，README 只写产品、也不链接它；`check.sh` 的「技术选型例外」在 README 或 `docs/MAINTAINING.md` 里都认。已有公开仓库：把 README 里的这些章节挪到 `docs/MAINTAINING.md`
 
 - **v3 增补**（2026-11-02）：「桌面应用」补上**正式签名**（melon-ci `desktop-release` 的 `sign: true`）——production 环境的签名与公证 Secret 清单、`package-desktop.sh` 有 `SIGN_IDENTITY` 就用 Developer ID 签名（hardened runtime + 时间戳）、`release-desktop.yml` 模板加 `sign` 的注释。**修复**：`release-desktop.sh` 模板在 build 阶段算 dmg 的 sha256，开了签名后流水线还会签 dmg、钉票据，`latest.json` 里的 sha256 就和实际安装包对不上——改为 publish 阶段算。已有桌面应用：发布脚本里把 sha256 从 `build` 挪到 `publish`（按新模板）；要正式签名的，按上面加 Secret 并在发布表单打开 `sign: true`
 
