@@ -127,11 +127,12 @@
 | 技术栈 | 默认 Electron + electron-builder（Mac arm64 先行；界面 Vue 3 + Vite）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`）。走「技术选型例外」的（如原生 App）照样用下面的发布与分发，只是打包换成打包钩子 |
 | 打包 | 发布脚本 `scripts/release-desktop.sh`（模板）按技术栈二选一：默认 electron-builder 出 dmg；**项目有 `scripts/package-desktop.sh`（模板）就交给它**——参数 `<版本号> <tag> <输出目录>`，产出至少 ad-hoc 签名的 `<产品名>.app`，版本号构建时注入（`Info.plist` 的 `CFBundleShortVersionString` = 版本号、`CFBundleVersion` = tag；随应用分发的命令行工具同样注入），发布脚本统一做成 dmg。构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
 | 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`，原生 App 要更新的 Xcode / macOS SDK 时填 `runner: macos-15`；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
+| 正式签名（可选） | 发布表单 `sign: true`：流水线把 Developer ID 证书导入临时钥匙串，经环境变量 `SIGN_IDENTITY` 交给打包（`package-desktop.sh` 用它签 `.app`，带 `--options runtime --timestamp`；没有就 ad-hoc），构建完再签 dmg、公证、钉票据。用户下载后直接打开、不被系统拦截。**dmg 在 build 之后还会变，安装包的 `sha256` 在 publish 阶段算**（模板已如此）。缺签名 Secret 时流水线直接失败，不悄悄退回 ad-hoc。证书到期前续签并更新 Secret |
 | 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
 | 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
 | 客户端更新 | 启动 10 秒后、之后每 6 小时读一次 `latest.json`（地址写在客户端里，不经服务端）；`version` 按语义化版本**大于**自己的版本（构建时注入的那个）才提示，显示 `notes`，点「下载」用系统浏览器打开 `files.arm64`；可以「跳过这个版本」；读失败静默、下次再试。没有 Apple 开发者签名做不了静默安装，写进 README 的已知限制 |
 | GitHub 设置 | `scripts/github-apply.sh imelonkid/<名> --kind desktop`：合并方式、main 分支保护（与服务相同的四项检查）、production 环境（只允许 main）；`--check --kind desktop` 核对 |
-| production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`（用户本人 `gh secret set … --env production`，值存 1Password `ops/<名>/prod`）。不需要部署入口 |
+| production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`；开了正式签名再加 `MACOS_CERT_P12_BASE64`、`MACOS_CERT_P12_PASSWORD`（Developer ID Application 证书连私钥导出的 p12）、`NOTARY_KEY_P8_BASE64`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`（App Store Connect API 密钥，公证用）。都由用户本人 `gh secret set … --env production` 写入，值存 1Password `ops/<名>/prod`。不需要部署入口 |
 | CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`：只跑不需要图形界面的检查与测试，不碰外网和真实数据。模板是 Electron 的（语法检查 + `node --test`，不下载 Electron）；其他技术栈换成它的单测（如 `go vet` + `go test`）。PR 检查跑在 Linux 上，只能在 macOS 编译的部分交给发布流水线 |
 | 门户 | 运维仓库 `portal/config.json` 的 `services` 加一条（模板 `portal-service.json`：`pipelines.release.use: desktop-release`，任务名按 melon-ci `desktop-release`；`online` 读 `latest.json` 的 `tag`），`portal/push.sh` 推上去；门户令牌的仓库范围包含本仓库 |
 | 注册表 | 不部署到服务器，不登记 `registry/services/`；它依赖的服务端接口写进 CLAUDE.md「契约」 |
@@ -143,6 +144,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v3 增补**（2026-11-02）：「桌面应用」补上**正式签名**（melon-ci `desktop-release` 的 `sign: true`）——production 环境的签名与公证 Secret 清单、`package-desktop.sh` 有 `SIGN_IDENTITY` 就用 Developer ID 签名（hardened runtime + 时间戳）、`release-desktop.yml` 模板加 `sign` 的注释。**修复**：`release-desktop.sh` 模板在 build 阶段算 dmg 的 sha256，开了签名后流水线还会签 dmg、钉票据，`latest.json` 里的 sha256 就和实际安装包对不上——改为 publish 阶段算。已有桌面应用：发布脚本里把 sha256 从 `build` 挪到 `publish`（按新模板）；要正式签名的，按上面加 Secret 并在发布表单打开 `sign: true`
 
 - **v3 增补**（2026-10-30）：新增「管理命令」——服务的日常运营操作做成主程序子命令，经部署入口 `admin`（运维仓库 deploy-agent v9）与运维终端 `melon admin` 执行，子命令在部署入口 conf 的 `ADMIN_ALLOW` 登记。已有服务：有管理命令的登记 `ADMIN_*`；说明里写「`ssh … docker exec`」的改成 `melon admin`
 

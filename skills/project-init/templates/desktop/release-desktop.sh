@@ -11,6 +11,8 @@
 #   · 默认 Electron：electron-builder 直接出 dmg，版本号 -c.extraMetadata.version 注入
 #   · 项目有 scripts/package-desktop.sh（走「技术选型例外」的原生 App 等）：交给它出 dist/<PRODUCT>.app，这里统一做成 dmg
 #     约定见模板 package-desktop.sh：参数 <版本号> <tag> <输出目录>；版本号构建时注入、不改源码；产出至少 ad-hoc 签名的 .app
+# 正式签名（可选，release-desktop.yml 里 sign: true）：流水线把 Developer ID 证书导入临时钥匙串、经 SIGN_IDENTITY 交给打包，
+# build 之后再签 dmg、公证、钉票据——dmg 在 build 之后还会变，所以安装包的 sha256 在 publish 阶段才算。
 # 构建前若有 scripts/prebuild.sh（比如从源码编译随应用分发的工具），会在 tag 的内容里先运行它；
 # 打包后若有 scripts/verify-build.sh <dist>，用它检查产物（缺文件就不发布）。
 # 变量后紧跟中文全角字符一律写 ${…}（macOS 自带 bash 3.2 会把全角字节当成变量名）。
@@ -49,12 +51,12 @@ build() {   # build <tag> <输出目录>
   if [[ -f "$src/scripts/verify-build.sh" ]]; then bash "$src/scripts/verify-build.sh" "$src/dist" || die "产物检查（scripts/verify-build.sh）没通过"; fi
   [[ -f "$src/dist/$dmg" ]] || die "没有生成 $dmg"
   mv "$src/dist/$dmg" "$out/"
-  local sum; sum="$(shasum -a 256 "$out/$dmg" | cut -d' ' -f1)"
+  # sha256 留到 publish 再算：开了正式签名时，流水线在 build 之后还会签 dmg、钉公证票据
   local link="$dmg"; [[ -n "${DOWNLOAD_BASE:-}" ]] && link="${DOWNLOAD_BASE%/}/$dmg"
-  jq -n --arg v "$VER" --arg t "$TAG" --arg d "$(date '+%F %T')" --arg n "$(notes)" --arg a "$ARCH" --arg f "$link" --arg s "$sum" \
-        '{version:$v, tag:$t, date:$d, notes:$n, files:{($a):$f}, sha256:{($a):$s}}' > "$out/latest.json"
+  jq -n --arg v "$VER" --arg t "$TAG" --arg d "$(date '+%F %T')" --arg n "$(notes)" --arg a "$ARCH" --arg f "$link" \
+        '{version:$v, tag:$t, date:$d, notes:$n, files:{($a):$f}, sha256:{}}' > "$out/latest.json"
   rm -rf "$src"
-  echo "▸ 产物：$out/${dmg}（$(du -h "$out/$dmg" | cut -f1)，sha256 ${sum:0:12}…）"
+  echo "▸ 产物：$out/${dmg}（$(du -h "$out/$dmg" | cut -f1)）"
 }
 
 # 原生 .app → dmg（拖到「应用程序」安装）：只用系统自带的 hdiutil
@@ -83,7 +85,9 @@ publish() {   # publish <目录>：安装包 → 版本清单（最后，客户�
   echo "▸ 上传 OSS：$OSS_BUCKET/$OSS_PREFIX/$dmg"
   oss_put "$out/$dmg" "$OSS_PREFIX/$dmg" application/x-apple-diskimage
   curl -fsSI "${DOWNLOAD_BASE%/}/$dmg" >/dev/null || die "上传后从公网取不到 ${DOWNLOAD_BASE%/}/${dmg}（前缀开了公共读吗？）"
-  jq --arg a "$ARCH" --arg u "${DOWNLOAD_BASE%/}/$dmg" '.files[$a] = $u' "$out/latest.json" > "$out/latest.json.tmp" && mv "$out/latest.json.tmp" "$out/latest.json"
+  # 安装包此刻是最终版（签名、公证票据都已钉上），sha256 在这里算
+  local sum; sum="$(shasum -a 256 "$out/$dmg" | cut -d' ' -f1)"
+  jq --arg a "$ARCH" --arg u "${DOWNLOAD_BASE%/}/$dmg" --arg s "$sum" '.files[$a] = $u | .sha256[$a] = $s' "$out/latest.json" > "$out/latest.json.tmp" && mv "$out/latest.json.tmp" "$out/latest.json"
   echo "▸ 更新版本清单：$OSS_PREFIX/latest.json"
   oss_put "$out/latest.json" "$OSS_PREFIX/latest.json" application/json "no-cache"
   PREV="$(git tag -l 'v[0-9]*' --sort=-v:refname | grep -A1 -x "$TAG" | tail -n +2 | head -1 || true)"
