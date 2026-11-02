@@ -137,6 +137,23 @@
 | 门户 | 运维仓库 `portal/config.json` 的 `services` 加一条（模板 `portal-service.json`：`pipelines.release.use: desktop-release`，任务名按 melon-ci `desktop-release`；`online` 读 `latest.json` 的 `tag`），`portal/push.sh` 推上去；门户令牌的仓库范围包含本仓库 |
 | 注册表 | 不部署到服务器，不登记 `registry/services/`；它依赖的服务端接口写进 CLAUDE.md「契约」 |
 
+## 静态宣传页（纯 HTML，2026-11-03）
+
+适用：App 的产品介绍 / 下载页这类**纯静态页面**——只有 HTML、CSS、图片、少量前端脚本；**没有后端接口、没有用户数据、没有密钥、没有登录**。有任何一样就不是宣传页，按「服务」或「静态站」（镜像）走。页面通常放在产品仓库的 `site/` 目录，和产品一起维护。
+
+| 项 | 标准 |
+|---|---|
+| 不起容器、不走门户 | 节点的反代直接出文件；发布用项目里的 `scripts/deploy-page.sh`（模板 `templates/page/deploy-page.sh`，改 `NAME`、`PAGE_DIR`），**这是「项目里没有部署脚本」的唯一例外** |
+| 发布 | `deploy-page.sh patch / minor / major`：只在已推送的干净 `main` 上，打 `page-vX.Y.Z` 并推到 GitHub，再调用部署入口上线；页面目录自上一版没改动就拒绝（`FORCE=1` 才发）。`deploy-page.sh page-vX.Y.Z` 上线已有 tag |
+| 上线方式 | 部署入口（`TYPE=page`）**只从 GitHub 上该 tag 取页面目录**，调用方传不进文件；逐项检查（≤ 64MB、只许普通文件和目录、根目录有 `index.html`）后放到 `<站点目录>/releases/<tag>/`，**原子切换** `current` 软链接；保留最近 5 版 |
+| 回滚 | `deploy-page.sh rollback [page-vX.Y.Z]`：切回保留的旧版本，秒级；切换后首页访问不正常会自动切回 |
+| 谁能发布 | 只有部署入口登记了钥匙的人（运维仓库 `agent/authorized/`）。开源仓库也安全：外部贡献只能提 PR，内容进 `main` 要审核；没有钥匙调不了部署入口。脚本里没有坐标，部署入口地址来自环境变量 `PAGE_DEPLOY_SSH` |
+| 反代 | 模板 `templates/page/edge.conf` → 运维仓库 `network/edge/<节点>/<域名>.conf`：80 跳 HTTPS；443 `root <站点目录>/current`，`index.html` 不缓存、`/assets/` 长缓存、HSTS |
+| 部署入口登记 | 模板 `templates/page/agent.conf` → 运维仓库 `agent/services/<节点>/<名>.conf`（`TYPE=page`、`PAGE_PATH`、`HEALTH` 填公网首页）→ `agent/install.sh <节点>`（建目录、生成只读部署密钥并登记到仓库） |
+| 监控 | 不需要 `/health` 和版本号；Gatus 一条：公网首页 200、响应时间、证书到期（告警写节点 · 域名 · 预案「静态宣传页」） |
+| 登记 | 注册表 `registry/services/<名>.yaml`（`deploy.type: page`，tier T2，可从 tag 重建）；不登记门户 |
+| 不需要 | Dockerfile、compose、`/health`、镜像仓库、production 环境、门户发布流水线 |
+
 ## 基线升级
 
 - **例外**（登记在项目的注册表 `known_gaps`）：鸿蒙客户端暂时只能本机构建签名（`scripts/release-harmony.sh`），等 AGC 证书与 CI 就位后上线上
@@ -153,6 +170,7 @@
 
 - **v3 增补**（2026-10-30）：新增「管理命令」——服务的日常运营操作做成主程序子命令，经部署入口 `admin`（运维仓库 deploy-agent v9）与运维终端 `melon admin` 执行，子命令在部署入口 conf 的 `ADMIN_ALLOW` 登记。已有服务：有管理命令的登记 `ADMIN_*`；说明里写「`ssh … docker exec`」的改成 `melon admin`
 
+- **v3 增补**（2026-11-03）：新增「静态宣传页」一类——纯 HTML 宣传页不起容器、不走门户，用项目里的 `scripts/deploy-page.sh`（模板 `templates/page/`）打 `page-v*` tag 后调用部署入口（`TYPE=page`）从 GitHub 取页面上线、原子切换、可回滚；反代与部署入口登记模板同目录。已有宣传页：rsync 之类的上传脚本换成模板
 - **v3 增补**（2026-10-28）：PR 合并或关闭后分支作废，后续改动从最新 main 开新分支（CLAUDE.md 模板同步；门户「待处理」列出「PR 已合并后又有提交」的分支）。已有项目：CLAUDE.md 补这一条
 - **v3 增补**（2026-10-23）：「桌面应用」补全——打包钩子 `scripts/package-desktop.sh`（走技术选型例外的原生 App 等，发布脚本统一做 dmg）、版本清单 `latest.json` 字段约定、客户端更新规则、OSS 子账号策略模板（只写前缀、不能删、新版 ARN）、门户登记模板；`check.sh` 按发布表单识别桌面应用（不再只认 Electron）。基线里去掉具体项目名。门户登记每一端都写 `paths` 与 `"auto_release": false`（模板已加）：变更合并后不自动发布，发布在门户流水线上点。已有桌面应用：发布脚本换新模板（Electron 项目行为不变）
 

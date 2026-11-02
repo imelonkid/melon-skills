@@ -65,6 +65,22 @@ fi
 
 # 项目基线：项目按哪一版接入（templates/BASELINE.md）
 BASE_CUR="$(cat "$(dirname "$0")/../templates/melon-baseline" 2>/dev/null || echo v1)"
+# 基线 · 静态宣传页（纯 HTML）：唯一允许的项目内发布脚本是模板 deploy-page.sh；本机 rsync 直接覆盖线上的上传脚本不行
+DP="$P/scripts/deploy-page.sh"
+if [[ -f "$DP" ]]; then
+  echo "▸ 静态宣传页"
+  grep -q 'PAGE_DEPLOY_SSH' "$DP" && grep -q 'agent deploy' "$DP" && ok "scripts/deploy-page.sh（基线模板：打 page-v* tag，部署入口从 GitHub 取）" \
+    || bad "scripts/deploy-page.sh 不是基线模板（templates/page/deploy-page.sh）"
+  grep -q '__NAME__' "$DP" && bad "deploy-page.sh 的 NAME 还没改（部署入口登记的名字）"
+  pd="$(sed -n 's/^PAGE_DIR="\([^"]*\)".*/\1/p' "$DP")"
+  [[ -f "$P/${pd:-site}/index.html" ]] && ok "${pd:-site}/index.html" || bad "页面目录 ${pd:-site}/ 没有 index.html"
+fi
+for f in "$P"/scripts/*.sh; do
+  [[ -f "$f" && "$f" != "$DP" ]] || continue
+  grep -qE 'rsync.*--delete.*[[:alnum:]_}"]:[/$~"]' "$f" \
+    && bad "${f#$P/} 用 rsync 直接覆盖服务器：宣传页换成 templates/page/deploy-page.sh，其他按服务走门户发布"
+done
+
 echo "▸ 项目基线（当前 ${BASE_CUR}）"
 if [[ -f "$P/.melon-baseline" ]]; then
   BASE_PRJ="$(tr -d '[:space:]' < "$P/.melon-baseline")"

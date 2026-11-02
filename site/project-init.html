@@ -206,6 +206,21 @@
   <div class="flow"><span class="s">调试证书 + 登记设备<br><small>开发者自测，hdc 安装</small></span><span class="a">→</span><span class="s">发布证书 + AGC 邀请测试<br><small>灰度，不需要软著</small></span><span class="a">→</span><span class="s">正式上架<br><small>软著、App 备案</small></span></div>
 </section>
 
+<section id="page" data-toc="静态宣传页">
+  <h2>静态宣传页（纯 HTML）</h2>
+  <p class="intro">App 的产品介绍 / 下载页：只有 HTML、CSS、图片，没有接口、用户数据、密钥。不起容器、不走门户，用项目里的 <code>scripts/deploy-page.sh</code> 发布。模板在 <code>templates/page/</code>。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>项</th><th>做法</th></tr></thead>
+    <tbody>
+      <tr><td>发布</td><td><code>deploy-page.sh patch / minor / major</code>：只在已推送的干净 main 上打 <code>page-vX.Y.Z</code> 并推送，再调节点部署入口上线</td></tr>
+      <tr><td>上线</td><td>部署入口（<code>TYPE=page</code>）只从 GitHub 上该 tag 取页面目录，检查后放 <code>releases/&lt;tag&gt;/</code>，原子切换 <code>current</code>；反代 root 指向 <code>current</code></td></tr>
+      <tr><td>回滚</td><td><code>deploy-page.sh rollback [tag]</code>，秒级；切换后首页不正常自动切回</td></tr>
+      <tr><td>谁能发布</td><td>只有部署入口登记了钥匙的人；开源仓库也安全（外部只能提 PR，调用方传不进文件）</td></tr>
+      <tr><td>监控</td><td>Gatus 一条：首页 200、响应时间、证书到期；不需要 <code>/health</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
 <section id="desktop" data-toc="桌面应用">
   <h2>桌面应用（独立客户端）</h2>
   <p class="intro">只有桌面端、没有自己服务端的客户端。安装包和版本清单都放对象存储，发布只在门户上点。模板在 <code>templates/desktop/</code>。</p>

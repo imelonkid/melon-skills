@@ -46,7 +46,7 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 | 项 | 规则 |
 |---|---|
 | 项目名 | kebab-case；同时是 GitHub 仓库名、compose 项目名、容器名、服务器目录 `/opt/<名>`、1Password 条目 `ops/<名>/prod` |
-| 类型 | **服务**（要部署）/ **静态站** / **库或工具**（不部署，不注册；Node 库发到 GitHub Packages，用 melon-ci `npm-release`） |
+| 类型 | **服务**（要部署）/ **静态站** / **静态宣传页**（纯 HTML，见下）/ **库或工具**（不部署，不注册；Node 库发到 GitHub Packages，用 melon-ci `npm-release`） |
 | 技术栈 | **按基线「技术架构与选型」，不问**（服务端 NestJS + Prisma + MySQL 8 + Redis 7；运营后台 Vue 3 + Element Plus；小程序 uni-app；原生鸿蒙 ArkTS；桌面 Electron）。用户要用别的：说明默认是什么、偏离的代价，用户坚持就写进 README「技术选型例外」 |
 | 可见性 | 私有（默认）/ 公开 |
 | 对外域名 | 服务 / 静态站才问；默认 `<名>.melonkid.cn` |
@@ -186,6 +186,10 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 #### 桌面应用（独立客户端，没有自己的服务端）
 
 按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；Electron 项目 `package.json` 的 `version` 固定 `0.0.0`；**不用 Electron 的（技术选型例外）加 `templates/desktop/package-desktop.sh` 写本项目的打包步骤，发布表单填 `runner: macos-26`**（SDK 旧了 App 在新系统上按旧外观运行），`ci-test.sh` 换成本技术栈的测试；客户端按「客户端更新」读 `latest.json`（字段见 `latest.json.example`）；门户登记用 `portal-service.json`；子账号策略用 `oss-ram-policy.json`（换 `<地域>`、`<主账号ID>`、`<桶>`）。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。要 Developer ID 正式签名与公证（用户打开不被系统拦截）：发布表单打开 `sign: true`，用户本人再写入 `MACOS_CERT_P12_BASE64`、`MACOS_CERT_P12_PASSWORD`、`NOTARY_KEY_P8_BASE64`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`（`--env production`），`package-desktop.sh` 用流水线给的 `SIGN_IDENTITY` 签 `.app`。不登记注册表。
+
+#### 静态宣传页（纯 HTML，App 的产品介绍 / 下载页）
+
+按 `templates/BASELINE.md`「静态宣传页」：只限 HTML / CSS / 图片 / 少量前端脚本，没有接口、用户数据、密钥、登录（有任何一样就按服务或静态站走）。页面放产品仓库 `site/`；`templates/page/deploy-page.sh` → `scripts/deploy-page.sh`（改 `NAME`、`PAGE_DIR`）：只在已推送的干净 main 上打 `page-vX.Y.Z` 并推送，再调节点部署入口（`TYPE=page`）从 GitHub 取该 tag 的页面上线、原子切换 `current`、可 `rollback`；不起容器、不走门户、不要 Dockerfile 与 `/health`。运维仓库侧：`templates/page/agent.conf` → `agent/services/<节点>/<名>.conf` 并 `agent/install.sh <节点>`；`templates/page/edge.conf` → `network/edge/<节点>/<域名>.conf` 下发；注册表 `deploy.type: page`；Gatus 一条首页探活。发布的人要在部署入口登记钥匙，环境变量 `PAGE_DEPLOY_SSH` 指向部署入口。
 
 ### 4. 首次提交并推到 GitHub
 
