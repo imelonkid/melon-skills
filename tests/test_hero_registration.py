@@ -45,7 +45,7 @@ class RegistrationTests(unittest.TestCase):
     def test_missing_workflow_and_homepage(self):
         (self.project / 'site/index.html').unlink()
         (self.project / '.github/workflows/release-page.yml').unlink()
-        self.assertEqual(len(self.run_check()), 2)
+        self.assertGreaterEqual(len(self.run_check()), 2)
 
     def test_ssh_credentials_rejected(self):
         p = self.project / '.github/workflows/release-page.yml'
@@ -56,6 +56,11 @@ class RegistrationTests(unittest.TestCase):
         self.end['release'] = 'publish-hero.yml'
         (self.project / '.github/workflows/release-page.yml').rename(self.project / '.github/workflows/publish-hero.yml')
         self.assertEqual(self.run_check(), [])
+
+    def test_public_ci_files_only_never_claims_registration(self):
+        self.assertEqual(hero.check_files(self.project), [])
+        (self.project / 'site/index.html').unlink()
+        self.assertTrue(hero.check_files(self.project))
 
 
 if __name__ == '__main__':

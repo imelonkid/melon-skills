@@ -78,7 +78,12 @@ HERO
 fi
 if [[ "$hero_registered" == 1 || -f "$P/.github/workflows/release-page.yml" ]] || grep -ql 'melon-ci/.github/workflows/page-release.yml@' "$P"/.github/workflows/*.yml 2>/dev/null; then
   echo "▸ Hero 宣传页"
-  python3 "$(dirname "$0")/check-hero.py" "$P" "$OPS" "$NAME" || fail=$((fail+1))
+  if [[ -f "$OPS/portal/config.json" ]]; then
+    python3 "$(dirname "$0")/check-hero.py" "$P" "$OPS" "$NAME" || fail=$((fail+1))
+  else
+    tip "未提供私有运维登记：这里只检查 Hero 文件，应用登记与上线准入尚未核对"
+    python3 "$(dirname "$0")/check-hero.py" "$P" "$OPS" "$NAME" --files-only || fail=$((fail+1))
+  fi
 fi
 # 基线 · 静态宣传页（纯 HTML）：唯一允许的项目内发布脚本是模板 deploy-page.sh；本机 rsync 直接覆盖线上的上传脚本不行
 DP="$P/scripts/deploy-page.sh"
