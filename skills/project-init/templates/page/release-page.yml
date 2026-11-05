@@ -1,0 +1,26 @@
+# 启用前确认 melon-ci 的 page-release/action 已发布到引用版本，门户和内网执行器已验收。
+name: 发布 Hero 页面
+run-name: Hero ${{ inputs.bump }} · ${{ github.actor }}
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 版本增量或已有 page-vX.Y.Z（重新交付制品，不直接部署）
+        default: patch
+        required: true
+      emergency:
+        description: 紧急变更（跳过发布窗口，需补复盘）
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  checks: read
+jobs:
+  release:
+    uses: imelonkid/melon-ci/.github/workflows/page-release.yml@v2
+    with:
+      project: __NAME__
+      page-dir: site
+      bump: ${{ inputs.bump }}
+      emergency: ${{ inputs.emergency }}
+    secrets: inherit

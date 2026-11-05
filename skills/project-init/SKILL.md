@@ -25,6 +25,8 @@ zsh -ic 'echo $OPS_REPO'      # 为空或目录不存在 → 只做第 1–3 步
 
 本 skill 在**公开仓库**里：不要把 IP、端口、密钥、面板路径、服务器上的具体路径写进本 skill 或模板。
 
+所有项目先查当前规范与基线。发现方案冲突，列明条款和差异，由用户决定修订基线或特殊放行；决定前不执行冲突部分，不把单次放行推广为默认规则。
+
 ## 硬性要求
 
 | # | 要求 | 规范 |
@@ -187,9 +189,13 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 
 按 `templates/BASELINE.md`「桌面应用」：`templates/desktop/` 的 `release-desktop.sh`（`__PRODUCT__` / `__NAME__` 换掉）、`release-desktop.yml`、`ci-test.sh`，加 `templates/multi-end/lib-release.sh`；Electron 项目 `package.json` 的 `version` 固定 `0.0.0`；**不用 Electron 的（技术选型例外）加 `templates/desktop/package-desktop.sh` 写本项目的打包步骤，发布表单填 `runner: macos-26`**（SDK 旧了 App 在新系统上按旧外观运行），`ci-test.sh` 换成本技术栈的测试；客户端按「客户端更新」读 `latest.json`（字段见 `latest.json.example`）；门户登记用 `portal-service.json`；子账号策略用 `oss-ram-policy.json`（换 `<地域>`、`<主账号ID>`、`<桶>`）。对象存储前缀 `<名>/desktop/`：用户本人建只能写这个前缀的子账号、给前缀开公共读，再 `gh secret set OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET --env production`；`OSS_BUCKET`、`OSS_ENDPOINT` 是环境变量。要 Developer ID 正式签名与公证（用户打开不被系统拦截）：发布表单打开 `sign: true`，用户本人再写入 `MACOS_CERT_P12_BASE64`、`MACOS_CERT_P12_PASSWORD`、`NOTARY_KEY_P8_BASE64`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`（`--env production`），`package-desktop.sh` 用流水线给的 `SIGN_IDENTITY` 签 `.app`。不登记注册表。
 
-#### 静态宣传页（纯 HTML，App 的产品介绍 / 下载页）
+#### Hero 宣传页（纯 HTML，统一门户交付）
 
-按 `templates/BASELINE.md`「静态宣传页」：只限 HTML / CSS / 图片 / 少量前端脚本，没有接口、用户数据、密钥、登录（有任何一样就按服务或静态站走）。页面放产品仓库 `site/`；`templates/page/deploy-page.sh` → `scripts/deploy-page.sh`（改 `NAME`、`PAGE_DIR`）：只在已推送的干净 main 上打 `page-vX.Y.Z` 并推送，再调节点部署入口（`TYPE=page`）从 GitHub 取该 tag 的页面上线、原子切换 `current`、可 `rollback`；不起容器、不走门户、不要 Dockerfile 与 `/health`。运维仓库侧：`templates/page/agent.conf` → `agent/services/<节点>/<名>.conf` 并 `agent/install.sh <节点>`；`templates/page/edge.conf` → `network/edge/<节点>/<域名>.conf` 下发；注册表 `deploy.type: page`；Gatus 一条首页探活。发布的人要在部署入口登记钥匙，环境变量 `PAGE_DEPLOY_SSH` 指向部署入口。
+按 `templates/BASELINE.md` v4「Hero 宣传页」接入。新页面用 `templates/page/release-page.yml`（项目名替换 `__NAME__`）和 `hero-end.json`；在现有应用的 ends[] 增加 hero 端，独立应用则走现有 services[] 登记，不能把某个应用写死到门户。运维侧仍登记 TYPE=page、反代及站点注册表，然后 `portal/push.sh`；默认下一轮全量采集间隔 600 秒，实际还含采集耗时，无需重启门户。
+
+固定流程：门户发起 → GitHub 打包上传 OSS → 门户确认构建成功 → 运维中心程序经内网调用目标部署入口 → 下载、校验、切换 → 健康检查。GitHub 不连接主机、不配置 SSH 凭据；门户只写部署请求，私钥留独立运维程序。页面 tag 独立为 page-vX.Y.Z，只交付页面目录和受信清单，健康通过才算上线；失败恢复旧版。启用前须确认配套工作流、门户类型和运维入口都已发布、权限与首次验收完成，不能仅拷贝模板就声称已接通。
+
+原 `deploy-page.sh` 方式保留给存量静态页，迁移由登记配置选择；不自动改变既有服务或删除旧入口。详细兼容与验收规则见基线对应两节。
 
 ### 4. 首次提交并推到 GitHub
 

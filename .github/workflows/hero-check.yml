@@ -1,0 +1,20 @@
+name: Hero 基线检查
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  hero:
+    name: Hero 登记检查测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: 注册关联测试与脚本语法
+        run: |
+          python3 -m unittest discover -s tests -v
+          bash -n skills/project-init/scripts/check.sh
+          python3 -m json.tool skills/project-init/templates/page/hero-end.json >/dev/null
+          node --check site/site.js
