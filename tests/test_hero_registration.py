@@ -19,7 +19,7 @@ class RegistrationTests(unittest.TestCase):
         (self.project / 'site').mkdir()
         (self.project / 'site/index.html').write_text('Hero')
         (self.ops / 'portal').mkdir(parents=True)
-        self.end = json.loads((ROOT / 'skills/project-init/templates/page/hero-end.json').read_text())
+        self.end = json.loads((ROOT / 'skills/project-init/templates/page/hero-end.json').read_text().replace('__NAME__', 'sample'))
         text = (ROOT / 'skills/project-init/templates/page/release-page.yml').read_text().replace('__NAME__', 'sample')
         (self.project / '.github/workflows/release-page.yml').write_text(text)
 
