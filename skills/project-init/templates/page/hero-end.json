@@ -1,0 +1,19 @@
+{
+  "_说明": "合入现有应用的 ends 数组，不是完整应用登记；配套能力验收后才推送启用。线上探测及内网服务映射由运维侧登记。回滚契约随执行器一并登记，不复用 GitHub SSH 流水线。",
+  "end": "hero",
+  "label": "Hero 页面",
+  "prefix": "page-v",
+  "release": "release-page.yml",
+  "channel": "OSS 版本包 → 内网部署入口 → 静态站点",
+  "pipelines": {
+    "release": {
+      "use": "page-release",
+      "bind": {
+        "gate": { "job": "页面门禁与打 tag" },
+        "build": { "job": "页面打包与上传" }
+      }
+    }
+  },
+  "paths": ["site/"],
+  "auto_release": false
+}
