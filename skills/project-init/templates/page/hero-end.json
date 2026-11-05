@@ -1,5 +1,5 @@
 {
-  "_说明": "合入现有应用的 ends 数组，不是完整应用登记；配套能力验收后才推送启用。线上探测及内网服务映射由运维侧登记。回滚契约随执行器一并登记，不复用 GitHub SSH 流水线。",
+  "_说明": "合入现有应用的 ends 数组；填写 page 的运维服务、OSS 项目及公开前缀，配套能力验收后才推送。回滚只选已保留的可信 Hero 版本，不触发 GitHub。",
   "end": "hero",
   "label": "Hero 页面",
   "prefix": "page-v",
@@ -9,11 +9,26 @@
     "release": {
       "use": "page-release",
       "bind": {
-        "gate": { "job": "页面门禁与打 tag" },
-        "build": { "job": "页面打包与上传" }
+        "gate": {
+          "job": "页面门禁与打 tag"
+        },
+        "build": {
+          "job": "页面打包与上传"
+        }
       }
+    },
+    "rollback": {
+      "use": "page-rollback"
     }
   },
-  "paths": ["site/"],
-  "auto_release": false
+  "paths": [
+    "site/"
+  ],
+  "auto_release": false,
+  "rollback": "internal:page-rollback",
+  "page": {
+    "service": "__NAME__-page",
+    "project": "__NAME__",
+    "source": "https://example.com/__NAME__/page"
+  }
 }

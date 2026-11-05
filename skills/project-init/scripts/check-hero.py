@@ -15,6 +15,11 @@ def check(project, ops, name):
         return ['运维侧应用未登记 hero 端']
     if end.get('prefix') != 'page-v' or end.get('pipelines', {}).get('release', {}).get('use') != 'page-release':
         errors.append('hero 端须使用 page-v 与 page-release')
+    page = end.get('page')
+    if not isinstance(page, dict) or any(not isinstance(page.get(k), str) or not page[k] or '__NAME__' in page[k] for k in ('service', 'project', 'source')):
+        errors.append('hero 端缺少已填写的 page 服务/项目/来源登记')
+    if end.get('rollback') != 'internal:page-rollback' or end.get('pipelines', {}).get('rollback', {}).get('use') != 'page-rollback':
+        errors.append('hero 回滚须使用已登记的内网 page-rollback')
     if end.get('auto_release') is not False:
         errors.append('hero 端须 auto_release: false，由门户人工发起')
     if not end.get('paths') or not any((project / p / 'index.html').is_file() for p in end['paths']):
