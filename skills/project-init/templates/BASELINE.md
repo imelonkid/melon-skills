@@ -143,7 +143,7 @@
 
 | 项 | 标准 |
 |---|---|
-| 接入 | 在运维侧服务注册表登记站点；在现有 `portal/config.json` 对应应用的 `ends[]` 增加 `end: hero`，选 `pipelines.release.use: page-release`；新增应用沿用现有 `services[]` 登记，不另建注册系统。模板见 `page/hero-end.json` |
+| 接入 | 在运维侧服务注册表登记站点；在现有 `portal/config.json` 对应应用的 `ends[]` 增加 `end: hero`，选 `pipelines.release.use: page-release`；新增应用沿用现有 `services[]` 登记，不另建注册系统。登记 `page.service`、`page.project`、`page.source`；回滚入口为 `internal:page-rollback` 并选 `page-rollback`，不触发 GitHub。模板见 `page/hero-end.json` |
 | 同步与界面 | 提交登记后运行运维仓库 `portal/push.sh`；门户下一轮采集按登记端展示，默认全量间隔 600 秒，另有采集耗时；无需重启门户。不为单个应用写代码分支，不承诺精确 600 秒可见；GitHub 令牌仓库授权与项目成员权限照常生效 |
 | 流程 | 门户发起 → GitHub 打包上传 OSS → 门户确认构建成功 → 运维中心受限程序经内网调用目标部署入口 → 目标下载、校验、切换版本 → 健康检查。主机与端口从私有运维登记读取，电脑只经 Vine 接入 |
 | GitHub | 表单 `release-page.yml` 调用独立 `page-release`；检查 main CI、发布窗口并打 `page-vX.Y.Z`，仅归档页面目录。生产环境限定 main；权限 `contents: write`、`checks: read`。**不配置或使用主机 SSH 凭据** |
