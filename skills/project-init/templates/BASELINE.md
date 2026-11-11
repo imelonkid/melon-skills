@@ -1,6 +1,6 @@
-# 项目基线 v4
+# 项目基线 v5
 
-> v4 2026-11-06（新增注册驱动的 Hero 发布方式；存量静态页按需迁移）· v3 2026-10-21（新增「技术架构与选型」）· v2 2026-10-14· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
+> v5 2026-11-11（macOS 发行校验移到 tag 阶段）· v4 2026-11-06（新增注册驱动的 Hero 发布方式；存量静态页按需迁移）· v3 2026-10-21（新增「技术架构与选型」）· v2 2026-10-14· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
 >
 > 项目根目录的 `.melon-baseline` 记录它按哪一版接入；`scripts/check.sh` 按本文逐项检查并报告。
 
@@ -100,7 +100,7 @@
 
 ## 多端（服务端 + 网页 + 桌面 + 手机，同一仓库）
 
-在「服务」基础上加 `templates/multi-end/`：各端独立 tag（`server-v` / `desktop-v` / `harmony-v`），网页界面由服务端提供，`/api/health` 带 `minClient`，客户端发布脚本共用 `lib-release.sh`。细则见 `SKILL.md`「多端项目」。
+在「服务」基础上加 `templates/multi-end/`：各端独立 tag（`server-v` / `desktop-v` / `harmony-v`），网页界面由服务端提供，`/api/health` 带 `minClient`，客户端发布脚本共用 `lib-release.sh`。细则见 `SKILL.md`「多端项目」。其中 macOS 桌面端遵循下文的 tag 校验与分发规则。
 
 ### 小程序端（多端项目里的一端，2026-10-15）
 
@@ -126,16 +126,25 @@
 |---|---|
 | 技术栈 | 默认 Electron + electron-builder（Mac arm64 先行；界面 Vue 3 + Vite）；`package.json` 的 `version` 固定 `0.0.0`，**版本号构建时注入**（`-c.extraMetadata.version`）。走「技术选型例外」的（如原生 App）照样用下面的发布与分发，只是打包换成打包钩子 |
 | 打包 | 发布脚本 `scripts/release-desktop.sh`（模板）按技术栈二选一：默认 electron-builder 出 dmg；**项目有 `scripts/package-desktop.sh`（模板）就交给它**——参数 `<版本号> <tag> <输出目录>`，产出至少 ad-hoc 签名的 `<产品名>.app`，版本号构建时注入（`Info.plist` 的 `CFBundleShortVersionString` = 版本号、`CFBundleVersion` = tag；随应用分发的命令行工具同样注入），发布脚本统一做成 dmg。构建前要编译的东西放 `scripts/prebuild.sh`；**打包后检查产物放 `scripts/verify-build.sh`**（随应用分发的文件缺一个就不发布）。脚本里变量后紧跟全角字符一律写 `${…}` |
-| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`（Electron 够用）；**原生 App 填 `runner: macos-26`**（与用户在用的 macOS 同代的 SDK）——macOS 按 App 链接的 SDK 决定外观，SDK 旧了在新系统上按旧外观运行（没有液态玻璃、`MenuBarExtra` 面板内容变高时窗口不跟着变、被裁掉），编译能过也看不出来。各构建机默认的 Xcode / SDK 以 GitHub 构建机镜像为准（2026-11 实测：`macos-14` → SDK 14.5，`macos-15` → 15.5，`macos-26` → 26.5），写明版本号、不用 `macos-latest`（会悄悄换）；tag `vX.Y.Z`；门禁同服务（发布窗口、main 的 CI 全绿）。发布只在门户上点 |
+| 发布 | `.github/workflows/release-desktop.yml`（模板）→ melon-ci `desktop-release@v2`，`tag-prefix: v`、`manifest: oss`；要编译 Go 就填 `go-version`；构建机默认 `macos-14`（Electron 够用）；**原生 App 填 `runner: macos-26`**（与用户在用的 macOS 同代的 SDK）——macOS 按 App 链接的 SDK 决定外观，SDK 旧了在新系统上按旧外观运行（没有液态玻璃、`MenuBarExtra` 面板内容变高时窗口不跟着变、被裁掉），编译能过也看不出来。各构建机默认的 Xcode / SDK 以 GitHub 构建机镜像为准（2026-11 实测：`macos-14` → SDK 14.5，`macos-15` → 15.5，`macos-26` → 26.5），写明版本号、不用 `macos-latest`（会悄悄换）；tag `vX.Y.Z`；门禁检查发布窗口与所选 main 提交的基础 CI。门户和仓库发布入口共用同一套 tag 校验与分发门禁 |
 | 正式签名（可选） | 发布表单 `sign: true`：流水线把 Developer ID 证书导入临时钥匙串，经环境变量 `SIGN_IDENTITY` 交给打包（`package-desktop.sh` 用它签 `.app`，带 `--options runtime --timestamp`；没有就 ad-hoc），构建完再签 dmg、公证、钉票据。用户下载后直接打开、不被系统拦截。**dmg 在 build 之后还会变，安装包的 `sha256` 在 publish 阶段算**（模板已如此）。缺签名 Secret 时流水线直接失败，不悄悄退回 ad-hoc。证书到期前续签并更新 Secret |
 | 分发 | 对象存储 `<桶>/<名>/desktop/`：安装包 `<产品名>-<版本>-arm64.dmg` 先传，版本清单 `latest.json` 最后传（`Cache-Control: no-cache`）；GitHub Release 存档。子账号**只能写**这个前缀、**没有删除权限**（策略模板 `oss-ram-policy.json`，新版 ARN `acs:oss:oss-<地域>:<主账号ID>:<桶>/<名>/desktop/*`）；桶给这个前缀开**匿名只读**，其他前缀不开。`release-desktop.sh oss-test` 验证能写、公网能读 |
 | 版本清单 `latest.json` | 样例 `latest.json.example`：`version`（X.Y.Z）、`tag`、`date`、`notes`（与上一个 tag 之间的提交说明）、`files.{arm64}`（安装包公网地址）、`sha256.{arm64}`。**只增字段不改字段**（已装出去的客户端按它判断更新） |
 | 客户端更新 | 启动 10 秒后、之后每 6 小时读一次 `latest.json`（地址写在客户端里，不经服务端）；`version` 按语义化版本**大于**自己的版本（构建时注入的那个）才提示，显示 `notes`，点「下载」用系统浏览器打开 `files.arm64`；可以「跳过这个版本」；读失败静默、下次再试。没有 Apple 开发者签名做不了静默安装，写进 README 的已知限制 |
 | GitHub 设置 | `scripts/github-apply.sh imelonkid/<名> --kind desktop`：合并方式、main 分支保护（与服务相同的四项检查）、production 环境（只允许 main）；`--check --kind desktop` 核对 |
 | production 环境 | 变量 `OSS_BUCKET`、`OSS_ENDPOINT`；Secret `OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`；开了正式签名再加 `MACOS_CERT_P12_BASE64`、`MACOS_CERT_P12_PASSWORD`（Developer ID Application 证书连私钥导出的 p12）、`NOTARY_KEY_P8_BASE64`、`NOTARY_KEY_ID`、`NOTARY_ISSUER_ID`（App Store Connect API 密钥，公证用）。都由用户本人 `gh secret set … --env production` 写入，值存 1Password `ops/<名>/prod`。不需要部署入口 |
-| CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`：只跑不需要图形界面的检查与测试，不碰外网和真实数据。模板是 Electron 的（语法检查 + `node --test`，不下载 Electron）；其他技术栈换成它的单测（如 `go vet` + `go test`）。PR 检查跑在 Linux 上，只能在 macOS 编译的部分交给发布流水线 |
+| CI | `ci.yml`（pr-check）+ `scripts/ci-test.sh`：只跑不需要图形界面的检查与测试，不碰外网和真实数据。模板是 Electron 的（语法检查 + `node --test`，不下载 Electron）；其他技术栈换成它的单测（如 `go vet` + `go test`）。PR 和合入 main 只跑 Linux 基础四项检查（密钥扫描、运维规范、测试、镜像构建），依赖 macOS 的验证集中在 tag 阶段 |
 | 门户 | 运维仓库 `portal/config.json` 的 `services` 加一条（模板 `portal-service.json`：`pipelines.release.use: desktop-release`，任务名按 melon-ci `desktop-release`；`online` 读 `latest.json` 的 `tag`），`portal/push.sh` 推上去；门户令牌的仓库范围包含本仓库 |
 | 注册表 | 不部署到服务器，不登记 `registry/services/`；它依赖的服务端接口写进 CLAUDE.md「契约」 |
+
+### macOS tag 校验与分发
+
+本节适用于独立和多端项目的 macOS 桌面应用。门户发起、GitHub Actions 手动发起或其他已授权入口执行相同门禁。
+
+1. 选定已通过基础 CI 的 main 提交，推送版本 tag。tag 固定候选版本与提交；GitHub Release 和分发记录标记发布状态。
+2. 检出该 tag，在 macOS 上执行项目已有的原生测试、实际分发渠道的构建和产物校验。桌面模板可在 `scripts/prebuild.sh` 中运行原生测试，用 `scripts/verify-build.sh` 校验打包产物。验证实际分发的同一份产物。
+3. 全部校验通过后才能分发，发布安装包和更新清单，并创建 GitHub Release。校验失败时保留 tag 和日志，沿用上一个已发布的下载清单。
+4. 临时环境故障可重跑同一 tag；需要修改代码时经 PR 合入 main，用新的版本 tag。已推送的 tag 保持原提交。校验通过后若发布失败，重试发布步骤时复用已校验的产物；产物不可用时从原 tag 重建并重新校验。
 
 ## Hero 宣传页（统一门户交付，v4 新增）
 
@@ -184,6 +193,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v5**（2026-11-11）：macOS 桌面应用的 PR 与 main 合并只跑基础 CI，原生测试、构建及产物校验统一移到 tag。存量 macOS 项目先接入并验收 tag 校验和分发门禁，再同步移除 PR 的 macOS 任务与对应必过项。
 
 - **v3 增补**（2026-11-02）：「桌面应用」**原生 App 的构建机用 `macos-26`**——默认 `macos-14`（SDK 14.5）构建的原生 App 在 macOS 26 上按旧外观运行：没有液态玻璃、菜单栏面板展开后被裁，编译和公证都正常、只有装上才看得出来；`macos-15` 默认 SDK 也只有 15.5。`release-desktop.yml` 模板的注释同步。已有原生桌面应用：发布表单加 `runner: macos-26`，发一个 patch
 
