@@ -14,7 +14,7 @@
 | `npmrc` | `.npmrc` | 私有公共包 `@imelonkid/*`，令牌走 `NODE_AUTH_TOKEN` |
 | `dockerignore` | `.dockerignore` | |
 | `gitignore.append` | 追加到 `.gitignore` | `src/generated/`（Prisma 生成的客户端）不进 git |
-| `env.example` | 追加到 `.env.example` | 真实值在 1Password `ops/<名>/prod` |
+| `env.example` | 追加到 `.env.example` | 生产普通运行配置在 r-nacos 维护，运行密钥由 1Password 注入 |
 | `Dockerfile` | `deploy/Dockerfile` | 多端项目构建上下文是仓库根：`COPY` 路径加 `apps/server/` |
 | `scripts/ci-test.sh` | `scripts/ci-test.sh` | 多端项目：仓库根的 `scripts/ci-test.sh` 调 `apps/server/scripts/ci-test.sh`；需要 Docker（起临时 MySQL） |
 

@@ -106,7 +106,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - 每个容器都有 `mem_limit`、`healthcheck`、`restart: unless-stopped`（§5.6）。
 - 端口只绑 `127.0.0.1`，对外统一经反向代理走 HTTPS；**不开新的安全组端口**（§6.5）。
 - 持久化数据只在 `./data/`，服务器上即 `/opt/<名>/data/`；不在里面堆手工 `.bak`（§5.5）。
-- 配置用服务内的 `env_file: .env`，**不靠 `--env-file` 插值**——后者不进容器标签，灾备重建会漏（真实踩过）。
+- 通过环境变量注入时用服务内的 `env_file: .env`，**不靠 `--env-file` 插值**——后者不进容器标签，灾备重建会漏（真实踩过）。
 - **不写 `logging:`**：日志轮转由节点基线统一配置（json-file 10m × 3）。
 - 第三方镜像（数据库、缓存等）**也从镜像仓库拉**：`<镜像仓库>/<命名空间>/<名>:<版本>@sha256:…`，先在运维仓库 `registry/mirror-images.txt` 登记并同步，**摘要按同步结果写**（skopeo 复制，个别官方镜像只同步 linux/amd64，不一定等于 Docker Hub 的摘要）；不用 `latest`，**不直接用 Docker Hub**（国内拉不动、旧摘要会被回收）。
 - 对象存储走 **S3 兼容接口**，不用 `oss2` 等厂商专有 SDK（§5.8）；做不到写进 `known_gaps`。
@@ -134,10 +134,11 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 - 后端提供一个统一登录接口（如 `POST /api/v1/admin/auth/sso`）：读身份头、按门户账号 id 找或建本地管理员、签发自己的会话。入口登记在门户「常用站点 · 管理界面」，网关与入口配置在运维仓库，**不在本项目里写**。
 - **前端用 Vue 3**（基线「技术架构与选型」）：有构建用 Vite + Vue 3 + Element Plus；没有构建步骤的小工具用固定版本的 `vue.global.prod.js` 放进仓库（不从外网 CDN 加载）。不用拼 HTML 字符串 + `innerHTML` 的写法（漏一处转义就是 XSS，整块重画还会丢滚动和展开状态）。特殊场景用别的，在 README「技术选型例外」写明用什么、为什么、谁同意的。
 
-#### 密钥（§5.4）
+#### 业务配置与密钥（§5.4）
 
-- 真实值只在 1Password `ops/<名>/prod`，**由用户本人创建和填写**，Claude 不经手密钥值。
-- 服务器上的 `/opt/<名>/.env` 只是副本，部署脚本不碰它。
+- 新业务从首次上线起在 r-nacos 维护普通运行配置。在私有注册表的 `deploy.config_center` 登记命名空间、分组、Data ID、读取方式及生效时机。文件交付沿用应用支持的格式。无普通运行配置的服务跳过此项。
+- 接入存量业务时，按项目、按配置项分批切换。每批核对应用实际读取结果后停用对应旧写入入口，其余配置沿用现有来源。操作步骤见运维仓库 `docs/12-config-center.md`。
+- 运行密钥由用户维护在 1Password `ops/<名>/prod` 并安全注入，发布密钥使用 GitHub Secrets。CI 读取已由配置中心管理的发布变量时，写清同步到 GitHub 环境副本的方式。
 
 #### 发布与回滚：一律走 tag，只在线上（§5.1、§9.3）
 
@@ -149,7 +150,7 @@ cp <skill>/templates/gitignore .gitignore     # 再按技术栈追加
 | 选版本号 | 只修 bug → **patch**；有新功能 → **minor**；不兼容（接口、数据、配置要跟着改）→ **major** |
 | 回滚 | 门户「回滚」或表单（留空 = 上一次上线前的版本，或填 tag） |
 | GitHub / 门户不可用 | 运维终端：`melon rollback <名> [tag]`、`melon status <名>`（不构建，切到服务器上已有的版本） |
-| 下发配置 | `pbpaste \| melon config <名>`（.env 来自 1Password，不经 GitHub） |
+| 下发完整的运行凭据文件（服务使用 .env 时） | `pbpaste \| melon config <名>`（.env 来自 1Password，不经 GitHub） |
 
 服务器侧的规则（部署入口 deploy-agent 执行）：
 
@@ -270,6 +271,7 @@ git remote set-url origin git@github.com:imelonkid/<名>.git                 # �
    - 服务器建目录（sudo 要密码的主机由用户执行）：`sudo mkdir -p /opt/<名>/data`；
    - 域名：确认主、备站点 ICP 接入；DNS TTL ≤ 300；反向代理与证书；
 4. **上线时**（用 server-ops skill，初始化阶段不碰服务器），按规范 §9.2 + 运维手册「部署新服务」逐项完成：
+   - 有普通运行配置的新服务，核对应用加载的配置摘要或一项可观察的设置；
    - 首次备份成功 + 做过一次恢复验证；备份任务的心跳接 Gatus；
    - Gatus 探活（`monitoring/gatus/config.yaml`）+ 告警实测触发过；
    - `panel` 索引、`docs/03-hosts.md`、注册表 `status: active`；

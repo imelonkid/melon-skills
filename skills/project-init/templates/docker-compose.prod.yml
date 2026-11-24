@@ -1,6 +1,6 @@
 # 线上：/opt/__NAME__/docker-compose.prod.yml —— 由部署入口从 tag 取，服务器上不要手改
 #   data/  持久化数据（唯一的数据目录；备份任务按注册表 assets 从这里取）
-#   .env   真实配置，来自 1Password「ops/__NAME__/prod」，不进 git
+#   .env   主机注入文件，密钥来自 1Password，不进 git。普通运行配置按注册表约定从 r-nacos 交付。
 # 对外：https://__DOMAIN__ → 反向代理 → 127.0.0.1:__PORT__
 # 不写 logging:：日志轮转由节点基线统一配置（json-file 10m × 3）
 name: __NAME__

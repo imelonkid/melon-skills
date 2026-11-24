@@ -22,7 +22,7 @@ __本地启动命令__
 - 注册表：`$OPS_REPO/registry/services/__NAME__.yaml` —— 改部署方式、数据位置、端口、域名时同步改它
 - 发布与回滚一律走 tag，**只在内网门户上点**（GitHub「发布 / 回滚」表单兜底）；本仓库不放部署脚本。版本号：修 bug → patch，新功能 → minor，不兼容 → major应急只用运维终端的 `melon status / rollback / config`；服务的管理命令用 `melon admin <服务> <子命令…>`；不要手动在服务器上改镜像或 compose
 - 新版只在 08–23 点发，窗口外 `EMERGENCY=1` 并补复盘；健康检查不过自动切回上一版
-- 配置：`.env.example` 列全部变量；真实值在 1Password `ops/__NAME__/prod`；服务器 `.env` 只是副本
+- 配置：`.env.example` 列全部变量；普通运行配置在 r-nacos 维护，交付与生效方式见私有服务登记；运行密钥在 1Password `ops/__NAME__/prod`，发布密钥使用 GitHub Secrets
 - 服务器操作用 server-ops skill；本项目代码里不写任何主机地址
 - PR 一律以 `main` 为目标，不开叠加 PR
 - **PR 合并（或关闭）后这个分支就作废**：后续改动先 `git switch main && git pull`，再开新分支。已经在旧分支上提交了的，把新提交 `git cherry-pick` 到新分支再开 PR——旧 PR 不会再收新提交，直接推只会悬在分支上进不了 main（squash 合并后旧分支也不能再拿来开 PR，会把合并过的改动再带一遍）
