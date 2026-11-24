@@ -19,6 +19,12 @@ deploy:
   up: GitHub「发布 / 回滚」表单或门户（经主机部署入口）；应急 melon rollback __NAME__
   env_example: .env.example
   secrets: ops/__NAME__/prod
+  config_center:                         # 有普通运行配置时填写；没有时省略整个段落
+    namespace: __ENVIRONMENT__
+    group: __NAME__
+    runtime_data_id: __CONFIG_FILE__
+    delivery: __CONFIG_DELIVERY__        # 如何读取、部署时生效或支持哪些在线变更
+    # ci_data_id: __CI_CONFIG_FILE__     # 仅当 CI 发布变量也由配置中心维护
 
 endpoints:
   - name: __NAME__

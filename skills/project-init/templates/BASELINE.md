@@ -1,6 +1,6 @@
-# 项目基线 v5
+# 项目基线 v6
 
-> v5 2026-11-11（macOS 发行校验移到 tag 阶段）· v4 2026-11-06（新增注册驱动的 Hero 发布方式；存量静态页按需迁移）· v3 2026-10-21（新增「技术架构与选型」）· v2 2026-10-14· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
+> v6 2026-11-24（业务运行配置接入配置中心）· v5 2026-11-11（macOS 发行校验移到 tag 阶段）· v4 2026-11-06（新增注册驱动的 Hero 发布方式；存量静态页按需迁移）· v3 2026-10-21（新增「技术架构与选型」）· v2 2026-10-14· 规范（要求）在运维仓库 `docs/01-standard.md`；**项目基线是规范在项目里的落地**：一份新项目照着就能满足规范的文件集合与约定。所有项目都对照本基线，**不以任何具体业务项目为样板**。
 >
 > 项目根目录的 `.melon-baseline` 记录它按哪一版接入；`scripts/check.sh` 按本文逐项检查并报告。
 
@@ -15,6 +15,7 @@
 | `.melon-baseline`（`templates/melon-baseline`） | ✓ | ✓ | ✓ | — |
 | `deploy/Dockerfile`（`stacks/<栈>/Dockerfile`；Node 服务 `stacks/nestjs/`）：钉版本、`APP_VERSION` 烘进镜像 | ✓ | ✓ | | §5.1 |
 | `deploy/docker-compose.prod.yml`（`templates/docker-compose.prod.yml`）：`mem_limit` / `healthcheck` / `restart`、只绑 127.0.0.1、`env_file: .env`、数据只在 `./data` | ✓ | ✓ | | §5.5、§5.6、§6.5 |
+| 普通运行配置由 r-nacos 维护，在私有运维注册表记录 `deploy.config_center` 的配置位置、交付方式及生效时机，首次发布验证应用实际取值 | 有普通运行配置时 | | | §5.4、§9.2 |
 | `.env.example`（`templates/env.example`） | ✓ | 有配置才要 | | §5.4 |
 | 健康检查 `GET /health` → `{"ok", "version"}`，`version` = 本次 tag（`stacks/nestjs/src/health/`、`stacks/python/health.py`；静态站在 Caddyfile）。**发布流水线用它验收**：门户 `server-release` 的最后一步探 `/health`，版本 = 本次 tag 且健康、稳定 20 秒才算上线完成 | ✓ | ✓ | | §8、§9.3 |
 | **发布与回滚只在内网门户上点**（门户「发布」对话框；GitHub「发布 / 回滚 / 状态」表单 `templates/workflows/` 兜底）；**项目里没有部署脚本**。版本号：只修 bug → patch；有新功能 → minor；不兼容（接口、数据、配置要跟着改）→ major。应急用运维终端的 `melon status / rollback / config`（运维仓库 `workstation/bin/melon`，不构建、不产生新版本） | ✓ | ✓ | | §5.1、§9.3 |
@@ -193,6 +194,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v6**（2026-11-24）：新业务从首次上线起使用 r-nacos 维护普通运行配置。存量业务从 GitHub 变量、主机 `.env` 等现有来源分批迁移，核对并验证每批实际生效后停用旧写入入口。运行密钥留在 1Password，发布密钥使用 GitHub Secrets。详见运维仓库 `docs/12-config-center.md`。
 
 - **v5**（2026-11-11）：macOS 桌面应用的 PR 与 main 合并只跑基础 CI，原生测试、构建及产物校验统一移到 tag。存量 macOS 项目先接入并验收 tag 校验和分发门禁，再同步移除 PR 的 macOS 任务与对应必过项。
 

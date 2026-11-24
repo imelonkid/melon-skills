@@ -21,8 +21,11 @@ GitHub 或门户不可用时，在运维终端用应急指令（不构建、不�
 ```bash
 melon status __NAME__          # 线上版本与最近的部署事件
 melon rollback __NAME__        # 切回上一次上线前的版本（服务器保留最近 5 版，秒级）
-pbpaste | melon config __NAME__  # 下发 .env（来自 1Password）
 ```
+
+## 业务运行配置
+
+在 r-nacos 维护生产普通运行配置。配置位置、交付方式与生效时机登记在私有运维注册表 `deploy.config_center`。运行密钥由 1Password 安全注入，发布密钥使用 GitHub Secrets。无普通运行配置时可删除本节。
 
 ## GitHub production 环境
 
@@ -41,7 +44,8 @@ pbpaste | melon config __NAME__  # 下发 .env（来自 1Password）
 ## 上线准入（运维规范 §9.2）
 
 - [ ] 代码在 GitHub，线上版本是一个 tag（`melon status __NAME__`）
-- [ ] `.env.example` 齐全；1Password 有 `ops/__NAME__/prod`
+- [ ] `.env.example` 齐全，运行密钥保存在 1Password 的 `ops/__NAME__/prod`
+- [ ] 有普通运行配置时，已登记配置中心位置、读取方式和生效时机，并在首次发布时验证应用实际取值
 - [ ] 注册表 `registry/services/__NAME__.yaml` 通过字段检查
 - [ ] T0/T1 资产首次备份成功，**做过一次恢复验证**；备份心跳接入 Gatus
 - [ ] Gatus 有探活，告警实测触发过

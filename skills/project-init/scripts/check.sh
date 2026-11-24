@@ -283,6 +283,11 @@ else
     R="$OPS/registry/services/$NAME.yaml"
     val() { awk -v k="$1" '$1==k":"{sub(/^[^:]*:[ ]*/,"");sub(/[ ]*#.*/,"");print;exit}' "$R"; }
     ok "已登记 registry/services/$NAME.yaml（$(val status)）"
+    if grep -qE '^[[:space:]]+config_center:' "$R"; then
+      ok "有配置中心登记；读取方式、生效时机和应用实际取值按 §9.2 验收"
+    else
+      echo "  · 无配置中心登记：新业务有普通运行配置时须在首次上线前接入，存量业务分批迁移"
+    fi
     for k in status tier dr_level site; do [[ -n "$(val $k)" ]] || bad "注册表缺 $k"; done
     for k in "repo" "up" "secrets" "mem_limit" "url"; do grep -qE "^\s+$k:\s*\S" "$R" || bad "注册表缺 $k"; done
     grep -qE '^assets:' "$R" || bad "注册表缺 assets"
