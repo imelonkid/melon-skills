@@ -17,8 +17,11 @@ git clone git@github.com:imelonkid/melon-skills.git ~/Workspace/melon-skills
 ~/Workspace/melon-skills/install.sh
 ```
 
-`install.sh` 把 `skills/*` 逐个软链到 `~/.claude/skills/`，并启用提交前的敏感信息扫描；幂等，同名的已有目录先挪到 `~/.claude/skills-backup/<时间>/`。
-本机的 skill 都是软链接，**改它就是改仓库**，改完提交推送。
+在 macOS 上，Codex 和 Claude 的 `project-init` 都链接到独立的 `~/.local/share/melon-skills/main/skills/project-init`。CI 每次运行会读取本仓库的默认分支 `main`。本机登录时和每 15 分钟由用户 LaunchAgent 快进更新同一分支，离线时可继续用上次成功取到的版本。仅安装建项基线可运行 `/usr/bin/python3 scripts/install_project_init.py`。更新失败时查看 `~/Library/Logs/cn.melonkid.project-init-sync.log`。
+
+已有建项入口各自备份到 `~/.codex/skills-backup/` 或 `~/.claude/skills-backup/` 的时间目录。开发基线请编辑工作区并提交 PR。业务仓库的 `.melon-baseline` 在项目完成适配后更新。
+
+完整安装还会把其余 Claude skills 链接到开发工作区，并启用提交前的敏感信息扫描。其他系统沿用原有的 Claude 工作区链接。
 
 ## 规则
 

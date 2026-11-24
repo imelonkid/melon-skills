@@ -12,7 +12,7 @@
 
 ## 这是什么
 
-melonkid 的 Claude Code skills。**公开仓库**。每个 skill 一个目录，`install.sh` 把它们软链到 `~/.claude/skills/`。
+melonkid 的 Claude Code skills。**公开仓库**。每个 skill 一个目录，`install.sh` 在 macOS 上让 Codex、Claude 的 `project-init` 共用定时快进到 `main` 的独立副本。其他 Claude skills 链接到工作区。修改基线在开发工作区进行。
 
 ```
 skills/<名>/SKILL.md        必需：frontmatter（name、description）+ 正文
@@ -23,7 +23,7 @@ site/<名>.html              每个 skill 的介绍页
 site/site.js                skill 清单（首页卡片和顶部菜单都从这里生成）
 site/style.css              页面样式（明暗两套色板）
 scripts/scan-secrets.sh     敏感信息扫描；.githooks/pre-commit 调用它
-install.sh                  软链 skills + 启用 pre-commit
+install.sh                  安装建项基线、软链其他 Claude skills、启用 pre-commit
 ```
 
 ## 一、敏感信息：零容忍

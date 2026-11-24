@@ -100,10 +100,10 @@
   <p class="intro">运维电脑用 <code>melon-ops/workstation/setup.sh</code> 初始化时会自动克隆并安装本仓库，通常不用单独做。</p>
   <ol class="steps">
     <li><h4>克隆</h4><pre>git clone git@github.com:imelonkid/melon-skills.git ~/Workspace/melon-skills</pre></li>
-    <li><h4>安装</h4><pre>~/Workspace/melon-skills/install.sh</pre><p>把 <code>skills/*</code> 逐个软链到 <code>~/.claude/skills/</code>，并启用提交前的敏感信息扫描。可以重复执行；同名的已有目录先挪到 <code>~/.claude/skills-backup/</code>。</p></li>
+    <li><h4>安装</h4><pre>~/Workspace/melon-skills/install.sh</pre><p>macOS 上的 Codex 和 Claude 共用一份 <code>project-init</code>，登录时和每 15 分钟从 <code>main</code> 快进更新，与 CI 使用相同来源。切换前各自备份原入口。其他 Claude skills 链接到工作区，提交前启用敏感信息扫描。</p></li>
     <li><h4>确认环境变量</h4><pre>zsh -ic 'echo $OPS_REPO $SKILLS_REPO $OPS_SITES'</pre><p>为空说明还没装私有仓库的 <code>ops.zsh</code>，先按 melon-ops 的 <code>workstation/README.md</code> 初始化。</p></li>
   </ol>
-  <div class="callout info"><span class="ic">ℹ️</span><p><b>本机是软链接。</b>改 <code>~/.claude/skills/&lt;名&gt;</code> 就是改本仓库，改完记得提交推送。</p></div>
+  <div class="callout info"><span class="ic">ℹ️</span><p><b>开发建项基线请使用工作区。</b>在工作区修改模板并提交 PR。合并后本机自动拉取，离线时继续使用已下载的版本。</p></div>
 </section>
 
 <section id="env" data-toc="环境变量">
