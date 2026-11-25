@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>macOS 桌面上线 · melon-skills</title>
+<script>try{var t=localStorage.getItem('ms-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="macos-desktop-launch">
+<div class="layout">
+
+<nav class="toc" aria-label="目录"><noscript><a href="../index.html">首页</a></noscript></nav>
+
+<main>
+
+<header class="hero" id="overview">
+  <div class="kicker">SKILL · MACOS-DESKTOP-LAUNCH</div>
+  <h1>macOS 桌面上线</h1>
+  <p class="lead">首次接入时准备签名材料、下载权限和门户登记。日常发版从门户选版本开始，用用户最终下载的 DMG 验收。</p>
+</header>
+
+<section id="onboarding" data-toc="首次接入">
+  <h2>首次接入</h2>
+  <ol class="steps">
+    <li><h4>确认发布目标</h4><p>核对仓库、桌面端工作流、版本标签前缀、安装包目录和清单地址，建立 GitHub production 环境。</p></li>
+    <li><h4>配置权限与签名材料</h4><p>云管理员配置项目目录的写入和下载权限。凭据持有人准备 Developer ID 证书、公证密钥，填入对应项目的生产环境。</p></li>
+    <li><h4>验证后登记</h4><p>以门户身份读取目标工作流。向目标目录写入测试文件，匿名读回并比对本次内容。维护者合并接入 PR 后，同步门户登记。</p></li>
+  </ol>
+</section>
+
+<section id="release">
+  <h2>发版与验收</h2>
+  <p>发布人选择桌面端和目标版本，流水线通过门禁后打标签，从标签构建、签名并公证。验收脚本核对本次运行、线上版本清单、DMG 摘要、Gatekeeper 和 App 版本。</p>
+  <p>若分发失败且原构建产物仍可用，可在修复原因后重跑同一版本的失败任务。</p>
+  <footer><a href="../skills/macos-desktop-launch/SKILL.md">查看逐步操作和验证命令</a></footer>
+</section>
+</main>
+</div>
+<script src="site.js"></script>
+</body>
+</html>
