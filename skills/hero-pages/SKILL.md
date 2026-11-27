@@ -137,6 +137,34 @@ melon-pages/
    - 跑通 `$OPS_REPO` 的全部检查与 `gitleaks git . --redact`。
 3. 如该产品仓库曾遗留临时 `site/` 或未启用的单仓 `release-page.yml`，在确认迁入 `melon-pages` 后按需清理，避免双份维护。
 
+### 场景 C：首次初始化统一 Hero 仓库 / 新建独立 Hero 仓库（一次性步骤）
+
+> **仅首次建仓需要执行一次**；如果 `imelonkid/melon-pages` 已经完成初始化，日常**新增产品 Hero 站点**（场景 B）或**更新页面**（场景 A）直接复用已有环境，**不需要重复执行本节**。将来若需要另建一个新的 Hero 仓库，可按本节完整复用。
+
+1. **应用 GitHub 仓库基线**（仅 Squash 合并、自动删分支、`main` 分支保护 + 4 项必过 CI 检查、创建仅允许 `main` 部署的 `production` 环境）：
+   ```bash
+   bash skills/project-init/scripts/github-apply.sh imelonkid/<仓库名> --kind desktop
+   ```
+2. **准备 OSS 最小权限（复用现有公开下载桶 `melon-download`，不新建桶）**：
+   - 在阿里云 RAM 新建专属子账号（如 `oss-<仓库名>`），仅授予目标前缀 `<项目名>/page/*` 的 `oss:PutObject`（无删除权限），AccessKey 存入 1Password `ops/<仓库名>/prod`。
+   - 在 `melon-download` 的 Bucket 授权策略（Bucket Policy）中**新增授权**（保留既有规则）：指定资源 `<项目名>/page/*`、所有账号 `*`、仅 `oss:GetObject`，供目标边缘节点免密下载页面包。
+3. **写入 GitHub `production` 环境变量与密钥**（Secret 走交互输入，不留进终端历史；不配置任何 `DEPLOY_*` 主机 SSH 凭据）：
+   ```bash
+   # 1. 写入两个非敏感环境变量
+   gh variable set OSS_BUCKET --repo imelonkid/melon-pages --env production --body "melon-download"
+   gh variable set OSS_ENDPOINT --repo imelonkid/melon-pages --env production --body "oss-cn-beijing.aliyuncs.com"
+
+   # 2. 交互写入两个 OSS 密钥（运行后直接粘贴并回车）
+   gh secret set OSS_ACCESS_KEY_ID --repo imelonkid/melon-pages --env production
+   gh secret set OSS_ACCESS_KEY_SECRET --repo imelonkid/melon-pages --env production
+   ```
+   （新建其他独立 Hero 仓库时，将 `--repo imelonkid/melon-pages` 替换为目标 `imelonkid/<仓库名>`。）
+4. **复检基线与门户权限**：
+   ```bash
+   bash skills/project-init/scripts/github-apply.sh imelonkid/melon-pages --check --kind desktop
+   ```
+   确认全部打 `✓`，并确保内网门户使用的 GitHub 细粒度令牌已勾选该仓库的访问权限；随后按 `$OPS_REPO` 文档完成部署入口登记、受限内网 `page-worker` 安装与 `portal/push.sh`。
+
 ## 6. 发布纪律与红线
 
 - **PR 是 Agent 的终点**：改动只提 PR 到 `main`，等待用户审阅并合并。
