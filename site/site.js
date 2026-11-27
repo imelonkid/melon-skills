@@ -2,7 +2,8 @@
 const SKILLS = [
   { id: 'project-init', name: '项目初始化', summary: '按 melon-ops 运维规范与项目基线起项目：GitHub 托管、自动定级、技术栈模板、容器与可观测达标、服务注册、Hero 端登记与内网制品交付、上线准入检查。', tags: ['git', 'docker', '规范'] },
   { id: 'hero-pages', name: 'Hero 宣传页', summary: '维护与接入统一托管在 melon-pages 的产品 Hero 落地页：多站结构、零进程边缘路由、30 天资源版本化、响应式与下载校验 QA、门户发版纪律。', tags: ['Hero', '静态页', '门户发布'] },
-  { id: 'macos-desktop-launch', name: 'macOS 桌面上线', summary: '从门户发布正式签名的桌面 App，核对下载权限、版本标签和用户拿到的安装包。', tags: ['macOS', 'OSS', '发布'] },
+  { id: 'aliyun-oss-tools', name: '阿里云 OSS 工具', summary: '创建最小权限 RAM 子账号与自定义策略、配置 Bucket 匿名只读、静态校验策略 JSON、实测目标前缀 PUT 写入与匿名回读、排查 403。', tags: ['阿里云', 'OSS', 'RAM', '校验'] },
+  { id: 'macos-desktop-launch', name: 'macOS 桌面上线', summary: '从门户发布正式签名的桌面 App，复用 aliyun-oss-tools 核对下载权限，验证版本标签和用户拿到的安装包。', tags: ['macOS', 'OSS', '发布'] },
   { id: 'server-ops', name: '服务器运维', summary: '多云服务器的巡检、排障、部署、基线收敛与灾备。坐标全部来自环境变量，事实在私有仓库。', tags: ['ssh', '监控', '基线'] },
   { id: 'article-review', name: '文章审阅', summary: '博客发布前的审阅：错别字、语病、文笔、标签与图片，产出可逐字对比的待审 commit。', tags: ['博客', 'Obsidian', '写作'] },
 ];
