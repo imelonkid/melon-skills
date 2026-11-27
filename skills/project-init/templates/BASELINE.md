@@ -147,13 +147,15 @@
 3. 全部校验通过后才能分发，发布安装包和更新清单，并创建 GitHub Release。校验失败时保留 tag 和日志，沿用上一个已发布的下载清单。
 4. 临时环境故障可重跑同一 tag；需要修改代码时经 PR 合入 main，用新的版本 tag。已推送的 tag 保持原提交。校验通过后若发布失败，重试发布步骤时复用已校验的产物；产物不可用时从原 tag 重建并重新校验。
 
-## Hero 宣传页（统一门户交付，v4 新增）
+## Hero 宣传页（统一门户交付，v4 新增 / 统一多站仓库）
 
-适用范围与下节纯静态宣传页一致：只有公开页面及资源，没有后端、用户数据、密钥或登录。Hero 是应用登记的一个端，不是门户内硬编码的应用；新接入默认用本方式，旧静态页不自动迁移。此节规定新方式的目标契约，须完成 melon-ci、门户及运维程序的配套发布和首次验收后才能启用，不因基线 PR 合并就视为线上已支持。
+适用范围与下节纯静态宣传页一致：只有公开页面及资源，没有后端、用户数据、密钥或登录。Hero 是应用登记的一个端，不是门户内硬编码的应用；新接入默认用本方式，旧静态页不自动迁移。**多产品 Hero 宣传页默认统一收口在私有仓库 `imelonkid/melon-pages`**（按 `site/<域名>/` 分目录、`sites.yaml` 登记），日常维护与新站接入流程见 `hero-pages` skill；单仓独立接入（`templates/page/release-page.yml` + `hero-end.json`）继续向后兼容。此节规定目标契约，须完成 melon-ci、门户及运维程序的配套发布和首次验收后才能启用，不因基线 PR 合并就视为线上已支持。
 
 | 项 | 标准 |
 |---|---|
-| 接入 | 在运维侧服务注册表登记站点；在现有 `portal/config.json` 对应应用的 `ends[]` 增加 `end: hero`，选 `pipelines.release.use: page-release`；新增应用沿用现有 `services[]` 登记，不另建注册系统。登记 `page.service`、`page.project`、`page.source`；回滚入口为 `internal:page-rollback` 并选 `page-rollback`，不触发 GitHub。模板见 `page/hero-end.json` |
+| 统一多站仓库（默认） | 私有仓库 `imelonkid/melon-pages` 统一承载各产品 Hero 页：`site/<域名>/` 放各站页面与版本化资源，`site/shared/` 放跨站共享资源（Nginx `alias` 暴露，严禁软链接），根 `site/index.html` 不可缺；根目录 `sites.yaml` 登记全部站点元数据，`scripts/ci-test.sh` 做离线体积与资源校验。全站合计 ≤ 64 MiB，`/assets/` 30 天缓存须改文件名版本号（如 `hero-v1.css`） |
+| 边缘路由（零额外进程） | `TYPE=page` 静态交付，不起容器。纯 Hero 域名统一由边缘 `hero-pages.conf` 的显式白名单 `map $host` 路由到 `<站点目录>/current/<域名>`（未命中返回 404）；混合 API + Hero 域名在各自 `<域名>.conf` 保留 `/v1/`、`/health` 转发给后端，静态部分指向 `<站点目录>/current/<域名>`。两类配置均须精确匹配 `location = /.page-release.json` 用 `alias <站点目录>/current/.page-release.json` 暴露发布版本并禁止缓存，屏蔽隐藏文件 `/.` |
+| 接入 | 在运维侧服务注册表登记站点；在现有 `portal/config.json` 对应应用的 `ends[]` 增加 `end: hero`，选 `pipelines.release.use: page-release`；统一多站仓库（`melon-pages`）或独立应用沿用现有 `services[]` 登记，不另建注册系统。登记 `page.service`、`page.project`、`page.source`；回滚入口为 `internal:page-rollback` 并选 `page-rollback`，不触发 GitHub。模板见 `page/hero-end.json` |
 | 同步与界面 | 提交登记后运行运维仓库 `portal/push.sh`；门户下一轮采集按登记端展示，默认全量间隔 600 秒，另有采集耗时；无需重启门户。不为单个应用写代码分支，不承诺精确 600 秒可见；GitHub 令牌仓库授权与项目成员权限照常生效 |
 | 流程 | 门户发起 → GitHub 打包上传 OSS → 门户确认构建成功 → 运维中心受限程序经内网调用目标部署入口 → 目标下载、校验、切换版本 → 健康检查。主机与端口从私有运维登记读取，电脑只经 Vine 接入 |
 | GitHub | 表单 `release-page.yml` 调用独立 `page-release`；检查 main CI、发布窗口并打 `page-vX.Y.Z`，仅归档页面目录。生产环境限定 main；权限 `contents: write`、`checks: read`。**不配置或使用主机 SSH 凭据** |
@@ -161,8 +163,8 @@
 | OSS | 只给项目页面前缀上传与匿名读取权限；复用项目已有上传账号时追加策略，保留原桌面端策略。GitHub 复用 `OSS_BUCKET`、`OSS_ENDPOINT`、`OSS_ACCESS_KEY_ID`、`OSS_ACCESS_KEY_SECRET`；运行时不需 AK。条件写入的覆盖保护须核对桶版本控制状态，不得自动改全桶设置 |
 | 门户与执行程序 | 门户继续主动查询 GitHub，写关联执行/run/tag/commit/清单摘要的请求，读运维执行结果；不 ssh、不读部署私钥、不执行主机命令。独立运维程序按服务登记校验并串行执行，部署身份只留内网，入口绑定来源和单服务强制命令，禁止 shell 与转发；网络授权需单独审阅和下发 |
 | 上线 | TYPE=page，不起容器；只下载登记的 OSS 前缀，校验来源、版本、哈希、≤64MiB、普通文件/目录与根目录 index.html，再原子切换 current。健康检查失败恢复旧版并记录原因；保留最近 5 版。GitHub 上传成功不等于发布成功 |
-| 回滚与验收 | 门户调用同一内网执行程序选择保留 tag，不重新构建。最终检查首页、资源和线上版本。每阶段记录耗时、结果和关联标识；超时先核对实际状态，避免重复部署。保持现有 Gatus 首页、证书与时延探活 |
-| 模板与生效 | `page/release-page.yml`、`page/hero-end.json` 为接入模板；使用前确认引用的独立工作流及门户 page-release 已发布。项目维护文档注明登记、变量用途与上线验收；不在公开仓库写主机事实。不再从本机脚本产生新 Hero 版本 |
+| 回滚与验收 | 门户调用同一内网执行程序选择保留 tag，不重新构建。最终检查首页、资源和线上版本（`/.page-release.json`）。每阶段记录耗时、结果和关联标识；超时先核对实际状态，避免重复部署。保持现有 Gatus 首页、证书与时延探活 |
+| 模板与生效 | `page/release-page.yml`、`page/hero-end.json` 为接入模板；使用前确认引用的独立工作流及门户 page-release 已发布。项目维护文档注明登记、变量用途与上线验收；不在公开仓库写主机事实。不再从本机脚本产生新 Hero 版本；多站维护与 QA 细则见 `hero-pages` skill |
 
 ### 存量静态页迁移
 
@@ -194,6 +196,8 @@
 - 已有项目跟进后改自己的 `.melon-baseline`；`check.sh` 会对落后的项目给出 △
 
 ## 变更
+
+- **v6 增补**（2026-11-27）：Hero 宣传页补充统一多站静态仓库 `imelonkid/melon-pages` 架构（`site/<域名>/`、`site/shared/`、根 `site/index.html`、`sites.yaml`）与边缘零进程路由规则（纯 Hero `hero-pages.conf` 显式 `map $host` 白名单、混合域名 `<域名>.conf` + `/.page-release.json` `alias`），并新增专用维护技能 `hero-pages`。保持对单仓 `TYPE=page`、`check-hero.py` 与存量 `deploy-page.sh` 的向后兼容；不升基线版本号。
 
 - **v6**（2026-11-24）：新业务从首次上线起使用 r-nacos 维护普通运行配置。存量业务从 GitHub 变量、主机 `.env` 等现有来源分批迁移，核对并验证每批实际生效后停用旧写入入口。运行密钥留在 1Password，发布密钥使用 GitHub Secrets。详见运维仓库 `docs/12-config-center.md`。
 

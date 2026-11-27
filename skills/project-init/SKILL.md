@@ -194,11 +194,13 @@ macOS 的 PR 与 main 合并只跑 Linux 基础 CI。选定基础 CI 已通过�
 
 #### Hero 宣传页（纯 HTML，统一门户交付）
 
-按 `templates/BASELINE.md` v4「Hero 宣传页」接入。新页面用 `templates/page/release-page.yml`（项目名替换 `__NAME__`）和 `hero-end.json`；在现有应用的 ends[] 增加 hero 端，独立应用则走现有 services[] 登记，不能把某个应用写死到门户。运维侧仍登记 TYPE=page、反代及站点注册表，然后 `portal/push.sh`；默认下一轮全量采集间隔 600 秒，实际还含采集耗时，无需重启门户。
+按 `templates/BASELINE.md`「Hero 宣传页」接入。**多产品 Hero 宣传页默认统一收口在私有仓库 `imelonkid/melon-pages`**（`site/<域名>/`、`site/shared/`、根 `site/index.html`、`sites.yaml` 注册表），共用一条 `TYPE=page` + 门户 `page-release` 交付链路、零额外容器进程；日常修改、新增产品落地页、30 天资源版本化与响应式 QA 见专用技能 [`hero-pages`](../hero-pages/SKILL.md)。边缘节点上，纯 Hero 域名通过 `hero-pages.conf` 的显式 `map $host` 白名单统一分发，混合 API + Hero 域名在各自 `<域名>.conf` 中保留 `/v1/`、`/health` 后端转发并指向 `<站点目录>/current/<域名>`，两类配置均须用 `alias` 暴露 `/.page-release.json` 供门户探测线上版本。
 
-固定流程：门户发起 → GitHub 打包上传 OSS → 门户确认构建成功 → 运维中心程序经内网调用目标部署入口 → 下载、校验、切换 → 健康检查。GitHub 不连接主机、不配置 SSH 凭据；门户只写部署请求，私钥留独立运维程序。页面 tag 独立为 page-vX.Y.Z，只交付页面目录和受信清单，健康通过才算上线；失败恢复旧版。启用前须确认配套工作流、门户类型和运维入口都已发布、权限与首次验收完成，不能仅拷贝模板就声称已接通。
+单仓库独立接入仍受支持（如特殊场景不进 `melon-pages`）：使用 `templates/page/release-page.yml`（项目名替换 `__NAME__`）和 `hero-end.json`；在现有应用的 `ends[]` 增加 `hero` 端，独立应用则走现有 `services[]` 登记，不能把某个应用写死到门户。运维侧仍登记 `TYPE=page`、反代及站点注册表，然后 `portal/push.sh`；默认下一轮全量采集间隔 600 秒，实际还含采集耗时，无需重启门户。
 
-原 `deploy-page.sh` 方式保留给存量静态页，迁移由登记配置选择；不自动改变既有服务或删除旧入口。公共 CI 没有私有 ops 配置时只检查 Hero 文件并明确提示未核对登记；上线前仍须在运维终端做完整登记检查。详细兼容与验收规则见基线对应两节。
+固定流程：门户发起 → GitHub 打包上传 OSS → 门户确认构建成功 → 运维中心程序经内网调用目标部署入口 → 下载、校验、切换 → 健康检查。GitHub 不连接主机、不配置 SSH 凭据；门户只写部署请求，私钥留独立运维程序。页面 tag 独立为 `page-vX.Y.Z`，只交付页面目录和受信清单，健康通过才算上线；失败恢复旧版。启用前须确认配套工作流、门户类型和运维入口都已发布、权限与首次验收完成，不能仅拷贝模板就声称已接通。
+
+原 `deploy-page.sh` 方式保留给未迁移的存量静态页，迁移由登记配置选择；不自动改变既有服务或删除旧入口。公共 CI 没有私有 ops 配置时只检查 Hero 文件并明确提示未核对登记；上线前仍须在运维终端做完整登记检查。详细兼容与验收规则见基线对应两节。
 
 ### 4. 首次提交并推到 GitHub
 
