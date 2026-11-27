@@ -148,7 +148,17 @@ melon-pages/
 2. **准备 OSS 最小权限（复用现有公开下载桶 `melon-download`，不新建桶）**：
    - 在阿里云 RAM 新建专属子账号（如 `oss-<仓库名>`），仅授予目标前缀 `<项目名>/page/*` 的 `oss:PutObject`（无删除权限），AccessKey 存入 1Password `ops/<仓库名>/prod`。
    - 在 `melon-download` 的 Bucket 授权策略（Bucket Policy）中**新增授权**（保留既有规则）：指定资源 `<项目名>/page/*`、所有账号 `*`、仅 `oss:GetObject`，供目标边缘节点免密下载页面包。
-3. **写入 GitHub `production` 环境变量与密钥**（Secret 走交互输入，不留进终端历史；不配置任何 `DEPLOY_*` 主机 SSH 凭据）：
+3. **实测 OSS 读写权限通畅（必做，避免首次发版撞 403）**：
+   复用 `macos-desktop-launch` 既有校验脚本，通过隐藏输入填入刚创建的子账号 AccessKey，一次性验证指定前缀的 `PutObject` 写入与匿名 `GetObject` 回读（若导出了策略 JSON，也可先用同脚本 `policy` 子命令静态校验）：
+   ```bash
+   python3 skills/macos-desktop-launch/scripts/verify.py \
+     oss --bucket melon-download \
+         --endpoint oss-cn-beijing.aliyuncs.com \
+         --prefix melon-pages/page \
+         --write-test
+   ```
+   确认 PUT 写入（200）与匿名 GET 逐字节回读（200）均通过后再继续。
+4. **写入 GitHub `production` 环境变量与密钥**（Secret 走交互输入，不留进终端历史；不配置任何 `DEPLOY_*` 主机 SSH 凭据）：
    ```bash
    # 1. 写入两个非敏感环境变量
    gh variable set OSS_BUCKET --repo imelonkid/melon-pages --env production --body "melon-download"
@@ -158,8 +168,8 @@ melon-pages/
    gh secret set OSS_ACCESS_KEY_ID --repo imelonkid/melon-pages --env production
    gh secret set OSS_ACCESS_KEY_SECRET --repo imelonkid/melon-pages --env production
    ```
-   （新建其他独立 Hero 仓库时，将 `--repo imelonkid/melon-pages` 替换为目标 `imelonkid/<仓库名>`。）
-4. **复检基线与门户权限**：
+   （新建其他独立 Hero 仓库时，将 `--repo imelonkid/melon-pages` 与 `--prefix melon-pages/page` 替换为目标仓库与前缀。）
+5. **复检基线与门户权限**：
    ```bash
    bash skills/project-init/scripts/github-apply.sh imelonkid/melon-pages --check --kind desktop
    ```

@@ -64,7 +64,7 @@
     <li><h4>三端响应式实测</h4><p>在桌面 <code>1280px</code>、平板 <code>728px</code>、手机 <code>390px</code> 下检查：无横向溢出、无控制台报错、图片完整无裁切、交互正常。</p></li>
     <li><h4>多语言与下载校验</h4><p>中英切换（ZH/EN）完整无残留；下载链接用 <code>new URL()</code> 严格校验登记的 HTTPS OSS 前缀与 <code>.dmg</code> 后缀，拒绝凭据、query 与 hash。</p></li>
     <li><h4>合规页脚</h4><p>保留 ICP 备案号 <code>京ICP备16017845号-2</code> 与 <code>Made by melonkid ↗</code> 署名。</p></li>
-    <li><h4>首次建仓一次性配置</h4><p>仅在首次初始化 <code>imelonkid/melon-pages</code>（或新建独立 Hero 仓库）时执行一次：运行 <code>github-apply.sh --kind desktop</code> 开启分支保护与 4 项 CI 检查，复用 <code>melon-download</code> 桶配置最小权限前缀，再通过 <code>gh variable set</code> / <code>gh secret set</code> 写入 <code>production</code> 环境的 <code>OSS_BUCKET</code>、<code>OSS_ENDPOINT</code> 与两个 <code>OSS_ACCESS_KEY_*</code> 密钥；后续新增子站无需重复。</p></li>
+    <li><h4>首次建仓一次性配置</h4><p>仅在首次初始化 <code>imelonkid/melon-pages</code>（或新建独立 Hero 仓库）时执行一次：运行 <code>github-apply.sh --kind desktop</code> 开启分支保护与 4 项 CI 检查，复用 <code>melon-download</code> 桶配置最小权限前缀，先用 <code>macos-desktop-launch/scripts/verify.py oss --write-test</code> 实测 PUT 写入与匿名回读通过，再通过 <code>gh variable set</code> / <code>gh secret set</code> 写入 <code>production</code> 环境的 <code>OSS_BUCKET</code>、<code>OSS_ENDPOINT</code> 与两个 <code>OSS_ACCESS_KEY_*</code> 密钥；后续新增子站无需重复。</p></li>
     <li><h4>PR 审阅与门户发版</h4><p>跑通 <code>bash scripts/ci-test.sh</code> 与 <code>gitleaks git . --redact</code> 后提 PR 到 <code>main</code>；Agent 不推发布 tag、不 SSH 部署，由用户合并后在内网门户按 <code>patch</code> / <code>minor</code> / <code>major</code> 手动发布。</p></li>
   </ol>
   <footer>melon-skills · <a href="../skills/hero-pages/SKILL.md">查看完整 SKILL.md</a> · 行为以 SKILL.md 为准</footer>
