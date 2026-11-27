@@ -34,9 +34,11 @@ check environment --repo "$REPO" --bucket "$BUCKET" --endpoint "$ENDPOINT"
 
 ## 第 1 步（云账号管理员）：为应用下载目录配置读写权限
 
-1. RAM 中选择本次发布身份，核对它对 `$BUCKET/$PREFIX/*` 的 `oss:PutObject` 权限。资源 ARN 使用桶所属主账号 ID。子用户 UID、AccessKey ID 含义不同。
-2. OSS 控制台 → 目标 Bucket → 权限控制 → Bucket 授权策略。对匿名账号仅授予该目录对象的 `oss:GetObject`。允许玩家直接下载即可，不需要列桶或删除权限。遇到阻止公共访问时，先核对项目登记的实际公开下载方案。
-3. 如有导出的 RAM 和 Bucket 策略，用下式核对明确授权的目标目录。此检查只匹配项目级授权声明；通过 CDN 或共享身份等其他策略实现时按其实际配置核验，不为匹配示例新增权限。最终读写能力在第 5 步实测。
+> 完整的阿里云 OSS 子账号创建、自定义策略模板与 403 排障请直接引用独立技能 **`aliyun-oss-tools`**（`skills/aliyun-oss-tools/SKILL.md` 及 `scripts/oss_verify.py`）。
+
+1. 按 `aliyun-oss-tools` 第 1 节：在 RAM 中选择或新建本次发布身份，核对它对 `$BUCKET/$PREFIX/*` 的 `oss:PutObject` 权限（可用 `oss_verify.py render-policy` 生成标准 JSON）。资源 ARN 使用桶所属主账号 ID，子用户 UID、AccessKey ID 含义不同。
+2. 按 `aliyun-oss-tools` 第 2 节：OSS 控制台 → 目标 Bucket → 权限控制 → Bucket 授权策略。对匿名账号仅授予该目录对象的 `oss:GetObject`。允许玩家直接下载即可，不需要列桶或删除权限。遇到阻止公共访问时，先核对项目登记的实际公开下载方案。
+3. 如有导出的 RAM 和 Bucket 策略，用下式核对明确授权的目标目录（`check policy` 底层复用 `aliyun-oss-tools/scripts/oss_verify.py policy`）。此检查只匹配项目级授权声明；通过 CDN 或共享身份等其他策略实现时按其实际配置核验，不为匹配示例新增权限。最终读写能力在第 5 步实测。
 
 ```bash
 check policy --ram "$RAM_POLICY_FILE" --policy "$BUCKET_POLICY_FILE" --region "$OSS_REGION" --owner "$BUCKET_OWNER" --bucket "$BUCKET" --prefix "$PREFIX"
@@ -100,10 +102,12 @@ check portal-token --repo "$REPO"
 
 ## 第 5 步（凭据持有人）：小文件上传和匿名回读
 
-对照第 0 步的目标，使用本次发布凭据写入或更新其下的 `ci-test.txt`。脚本显示完整目的地址，在本机终端隐藏输入 AccessKey，用一次性随机内容上传，然后匿名 GET 并逐字节比对。成功后保留测试文件。
+对照第 0 步的目标，使用独立技能 **`aliyun-oss-tools`** 的校验能力（`check oss` 底层直接调用 `skills/aliyun-oss-tools/scripts/oss_verify.py probe`），以本次发布凭据写入或更新其下的 `ci-test.txt`。脚本显示完整目的地址，在本机终端隐藏输入 AccessKey，用一次性随机内容上传，然后匿名 GET 并逐字节比对。成功后保留测试文件。
 
 ```bash
 check oss --bucket "$BUCKET" --endpoint "$ENDPOINT" --prefix "$PREFIX" --write-test
+# 或直接调用独立脚本：
+# python3 "$SKILL_DIR/../aliyun-oss-tools/scripts/oss_verify.py" probe --bucket "$BUCKET" --endpoint "$ENDPOINT" --prefix "$PREFIX" --write-test
 ```
 
 只有本次 PUT 和匿名回读均成功才能记为通过。404、读到旧内容、另一个项目的测试结果都不能代替。失败时保留操作名、HTTP 状态、Request ID；写入失败检查发布身份与目标前缀，匿名读取失败检查玩家下载路径。直连 OSS 公共读使用上述检查；如果项目登记的是 CDN 下载地址，使用 `--read-base "$DOWNLOAD_BASE"` 从实际下载入口回读。换过 Key 后还须确认工作流使用的 production Secret 已更新。

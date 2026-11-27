@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
 """macOS 桌面上线检查。oss --write-test 会覆盖指定前缀的 ci-test.txt；其他命令只读。"""
 import argparse
-import base64
 import getpass
-import hashlib
-import hmac
 import http.client
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
-import secrets
 import subprocess
 import sys
 import tempfile
-from email.utils import formatdate
 from urllib.parse import urlsplit
 
 OSS_SECRETS = {"OSS_ACCESS_KEY_ID", "OSS_ACCESS_KEY_SECRET"}
 SIGNING = {"MACOS_CERT_P12_BASE64", "MACOS_CERT_P12_PASSWORD",
            "NOTARY_KEY_P8_BASE64", "NOTARY_KEY_ID", "NOTARY_ISSUER_ID"}
+
+
+def _load_oss_tools():
+    tool_path = Path(__file__).resolve().parents[2] / "aliyun-oss-tools/scripts/oss_verify.py"
+    spec = importlib.util.spec_from_file_location("aliyun_oss_verify", tool_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+OSS_TOOLS = _load_oss_tools()
 
 
 def need(condition, message):
@@ -65,25 +72,7 @@ def vault(p):
 
 
 def identity_scope(p):
-    resources = {f"acs:oss:{region}:{owner}:{p.bucket}/{p.prefix}/*"
-                 for region in (p.region, "*") for owner in (p.owner, "*")}
-    def items(value):
-        return value if isinstance(value, list) else [value]
-
-    def grant(file, action, public):
-        for s in read_json(file)["Statement"]:
-            principal = s.get("Principal")
-            if isinstance(principal, dict):
-                principal = principal.get("RAM")
-            if (s["Effect"] == "Allow" and action in items(s.get("Action"))
-                    and resources.intersection(items(s.get("Resource")))
-                    and (not public or "*" in items(principal))):
-                return
-        raise ValueError(f"策略中未找到 {action} 对目标前缀的明确授权，请核对导出策略格式和范围")
-
-    grant(p.ram, "oss:PutObject", False)
-    grant(p.policy, "oss:GetObject", True)
-    print("已匹配声明；附加条件、授权绑定及最终生效结果由上传回读实测。")
+    OSS_TOOLS.check_policy(p)
 
 
 def portal_token(p):
@@ -97,36 +86,12 @@ def portal_token(p):
 
 
 def oss(p):
-    need(p.write_test, "写入测试对象必须显式指定 --write-test")
-    need(re.fullmatch(r"[a-z0-9][a-z0-9-]+", p.bucket), "桶名无效")
-    need(re.fullmatch(r"oss-[a-z0-9-]+\.aliyuncs\.com", p.endpoint), "需要阿里云 OSS 公网地域端点")
-    need(all(re.fullmatch(r"[a-zA-Z0-9_-]+", part) for part in p.prefix.split("/")), "目标前缀无效")
-    key = f"{p.prefix}/ci-test.txt"
-    host = f"{p.bucket}.{p.endpoint}"
-    print(f"将写入 https://{host}/{key}", flush=True)
-    need(sys.stdin.isatty(), "请在本机交互终端输入 OSS 凭据")
-    ak = getpass.getpass("AccessKey ID（非 RAM UID）：")
-    sk = getpass.getpass("AccessKey Secret：")
-    need(ak and sk, "缺少凭据")
-    body = ("desktop oss-test " + secrets.token_hex(16) + "\n").encode()
-    date = formatdate(usegmt=True)
-    canonical = f"PUT\n\ntext/plain\n{date}\n/{p.bucket}/{key}".encode()
-    signature = base64.b64encode(hmac.digest(sk.encode(), canonical, "sha1")).decode()
-    url = urlsplit((p.read_base or f"https://{host}/{p.prefix}").rstrip("/") + "/ci-test.txt")
-    need(url.scheme == "https" and url.hostname and not url.username and not url.query and not url.fragment, "匿名下载入口需要 HTTPS 目录地址")
-    for method in ("PUT", "GET"):
-        headers = ({"Content-Type": "text/plain", "Date": date, "Authorization": f"OSS {ak}:{signature}"}
-                   if method == "PUT" else {})
-        conn = http.client.HTTPSConnection(host if method == "PUT" else url.netloc, timeout=30)
-        try:
-            conn.request(method, "/" + key if method == "PUT" else url.path, body if method == "PUT" else None, headers)
-            response = conn.getresponse()
-            print(method, response.status, "Request ID", response.getheader("x-oss-request-id", "-"))
-            need(response.status == 200, f"{method} 失败")
-            if method == "GET":
-                need(response.read(len(body) + 1) == body, "读回内容与本次写入不符")
-        finally:
-            conn.close()
+    OSS_TOOLS.probe_oss(
+        p,
+        stdin=sys.stdin,
+        getpass_fn=getpass.getpass,
+        connection_cls=http.client.HTTPSConnection,
+    )
 
 
 def prs(p):

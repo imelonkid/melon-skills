@@ -145,9 +145,17 @@ melon-pages/
    ```bash
    bash skills/project-init/scripts/github-apply.sh imelonkid/<仓库名> --kind desktop
    ```
-2. **准备 OSS 最小权限（复用现有公开下载桶 `melon-download`，不新建桶）**：
-   - 在阿里云 RAM 新建专属子账号（如 `oss-<仓库名>`），仅授予目标前缀 `<项目名>/page/*` 的 `oss:PutObject`（无删除权限），AccessKey 存入 1Password `ops/<仓库名>/prod`。
-   - 在 `melon-download` 的 Bucket 授权策略（Bucket Policy）中**新增授权**（保留既有规则）：指定资源 `<项目名>/page/*`、所有账号 `*`、仅 `oss:GetObject`，供目标边缘节点免密下载页面包。
+2. **准备 OSS 最小权限并实测读写通畅（引用 `aliyun-oss-tools`）**：
+   - 完整子账号创建、RAM 最小权限策略生成与 Bucket Policy 匿名读配置参见独立技能 **`aliyun-oss-tools`**（`skills/aliyun-oss-tools/SKILL.md`）。
+   - 复用现有公开下载桶 `melon-download`（不新建桶），为子账号 `oss-<仓库名>` 仅授 `<项目名>/page/*` 的 `oss:PutObject`（无删除权），并在 Bucket Policy 新增该前缀的匿名 `oss:GetObject`。
+   - **必做探活**（避免首次门户发版撞 403）：用 `aliyun-oss-tools` 校验脚本隐藏输入 AccessKey，实测 PUT 写入与匿名 GET 逐字节回读：
+     ```bash
+     python3 skills/aliyun-oss-tools/scripts/oss_verify.py \
+       probe --bucket melon-download \
+             --endpoint oss-cn-beijing.aliyuncs.com \
+             --prefix melon-pages/page \
+             --write-test
+     ```
 3. **写入 GitHub `production` 环境变量与密钥**（Secret 走交互输入，不留进终端历史；不配置任何 `DEPLOY_*` 主机 SSH 凭据）：
    ```bash
    # 1. 写入两个非敏感环境变量
@@ -158,7 +166,7 @@ melon-pages/
    gh secret set OSS_ACCESS_KEY_ID --repo imelonkid/melon-pages --env production
    gh secret set OSS_ACCESS_KEY_SECRET --repo imelonkid/melon-pages --env production
    ```
-   （新建其他独立 Hero 仓库时，将 `--repo imelonkid/melon-pages` 替换为目标 `imelonkid/<仓库名>`。）
+   （新建其他独立 Hero 仓库时，将 `--repo imelonkid/melon-pages` 与 `--prefix melon-pages/page` 替换为目标仓库与前缀。）
 4. **复检基线与门户权限**：
    ```bash
    bash skills/project-init/scripts/github-apply.sh imelonkid/melon-pages --check --kind desktop

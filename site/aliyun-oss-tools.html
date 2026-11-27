@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>阿里云 OSS 工具 · melon-skills</title>
+<script>try{var t=localStorage.getItem('ms-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="aliyun-oss-tools">
+<div class="layout">
+
+<nav class="toc" aria-label="目录"><noscript><a href="../index.html">首页</a></noscript></nav>
+
+<main>
+
+<header class="hero" id="overview">
+  <div class="kicker">SKILL · ALIYUN-OSS-TOOLS</div>
+  <h1>阿里云 OSS 工具</h1>
+  <p class="lead">为桌面端安装包、Hero 静态页制品及业务存储提供统一的阿里云 OSS 最小权限配置指导与校验脚本：生成策略模板、核对 RAM 与 Bucket Policy、实测目标前缀 PUT 写入与匿名 GET 回读、检查 GitHub 环境与排查 403。</p>
+  <div class="stats">
+    <div class="stat"><b>最小权限</b><span>仅目标前缀 PutObject</span></div>
+    <div class="stat"><b>PUT + GET</b><span>先实测通畅再发版</span></div>
+    <div class="stat"><b>隐藏输入</b><span>密钥不进终端历史</span></div>
+    <div class="stat"><b>统一复用</b><span>桌面端与 Hero 共用</span></div>
+  </div>
+</header>
+
+<section id="trigger" data-toc="什么时候用">
+  <h2>什么时候用</h2>
+  <div class="flow"><span class="s">建 OSS 子账号</span><span class="s">配 OSS 权限</span><span class="s">校验 OSS 读写</span><span class="s">排查 OSS 403</span><span class="s">阿里云 OSS 工具</span></div>
+  <p class="intro">每次为新项目建立 OSS 写入前缀、修改 RAM / Bucket Policy 权限、或首次门户发版撞 403 排障时使用。<code>macos-desktop-launch</code> 与 <code>hero-pages</code> 均直接复用本技能的流程与脚本。</p>
+</section>
+
+<section id="commands" data-toc="校验脚本">
+  <h2>统一校验脚本（<code>oss_verify.py</code>）</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>子命令</th><th>默认权限</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>render-policy</code></td><td>只读</td><td>按主账号 UID、地域、桶名与前缀输出最小权限 RAM 写策略与 Bucket 匿名读参考 JSON</td></tr>
+      <tr><td><code>policy</code></td><td>只读</td><td>静态核对导出的 RAM 自定义策略与 Bucket Policy 是否准确覆盖目标前缀</td></tr>
+      <tr><td><code>probe --write-test</code></td><td>写入测试文件</td><td>隐藏输入 AccessKey，向 <code>&lt;前缀&gt;/ci-test.txt</code> 写入随机内容并匿名 GET 逐字节回读（私有前缀可加 <code>--skip-read</code>）</td></tr>
+      <tr><td><code>env</code></td><td>只读</td><td>核对 GitHub <code>production</code> 环境的 <code>OSS_BUCKET</code> / <code>OSS_ENDPOINT</code> 值及密钥名称是否配齐</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="flow" data-toc="标准接入流程">
+  <h2>标准接入与验证流程</h2>
+  <ol class="steps">
+    <li><h4>生成最小权限策略</h4><p>运行 <code>oss_verify.py render-policy</code> 生成仅允许 <code>oss:PutObject</code> 于目标 <code>&lt;桶&gt;/&lt;前缀&gt;/*</code> 的自定义策略（不给删除与列桶权限），确认使用主账号数字 UID 与 <code>oss-cn-*</code> 地域段。</p></li>
+    <li><h4>创建 RAM 子账号并配置 Bucket 读权限</h4><p>创建仅开放 OpenAPI AccessKey 的子账号并附加该策略，将凭据存入 1Password；若该前缀需要公开下载或边缘拉包，在 Bucket Policy 中新增该前缀的匿名 <code>oss:GetObject</code>（保留其他规则）。</p></li>
+    <li><h4>先实测读写通畅</h4><p>运行 <code>oss_verify.py probe --write-test</code> 确认本次 <code>PUT 200</code> 与匿名 <code>GET 200</code> 逐字节匹配，再写入 GitHub <code>production</code> 变量与密钥，避免正式发版阶段撞 403。</p></li>
+  </ol>
+  <footer>melon-skills · <a href="../skills/aliyun-oss-tools/SKILL.md">查看完整 SKILL.md</a> · 行为以 SKILL.md 为准</footer>
+</section>
+
+</main>
+</div>
+<script src="site.js"></script>
+</body>
+</html>
