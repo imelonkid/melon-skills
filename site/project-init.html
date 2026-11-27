@@ -26,10 +26,10 @@
   </div>
 </header>
 
-<section id="hero-delivery">
-  <h2>Hero 宣传页：基线 v4</h2>
-  <p>沿用应用登记：增加 Hero 端，运行运维侧 portal/push.sh，门户按端展示并进入发布页。默认全量采集间隔 600 秒，另计采集耗时，无需重启门户。接入检查会核对 Hero 发布表单、页面目录与应用登记的关联。公共 CI 无私有登记时仅做文件检查，明确提示登记尚未核对；上线前必须补齐完整检查。</p>
-  <p>门户 → GitHub 打包上传 OSS → 门户确认 → 内网受限运维程序调用部署入口 → 下载、校验、切换 → 健康检查。GitHub 不保存部署 SSH 密钥，门户不直接操作主机。旧静态页按需迁移，配套能力验收前不启用新方式。</p>
+<section id="hero-delivery" data-toc="Hero 宣传页">
+  <h2>Hero 宣传页：统一多站与门户交付</h2>
+  <p>多产品 Hero 宣传页默认统一托管在私有仓库 <code>imelonkid/melon-pages</code>（<code>site/&lt;域名&gt;/</code>、<code>site/shared/</code>、根 <code>site/index.html</code> 与 <code>sites.yaml</code>），零额外容器进程，由边缘 OpenResty 按纯 Hero 白名单（<code>hero-pages.conf</code>）或混合域名配置（<code>&lt;域名&gt;.conf</code>）提供静态文件并暴露 <code>/.page-release.json</code>。日常改版、新站接入与 QA 见 <a href="hero-pages.html">Hero 宣传页</a>。</p>
+  <p>单仓库独立接入继续兼容：沿用应用登记增加 Hero 端，运行运维侧 <code>portal/push.sh</code>，门户按端展示并进入发布页（默认全量采集间隔 600 秒，另计采集耗时，无需重启门户）。固定链路为：门户 → GitHub 打包上传 OSS → 门户确认 → 内网受限运维程序调用部署入口 → 下载、校验、切换 → 健康检查。GitHub 不保存部署 SSH 密钥，门户不直接操作主机；旧静态页按需迁移。</p>
 </section>
 <section id="trigger" data-toc="什么时候用">
   <h2>什么时候用</h2>

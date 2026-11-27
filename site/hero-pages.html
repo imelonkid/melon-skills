@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hero 宣传页 · melon-skills</title>
+<script>try{var t=localStorage.getItem('ms-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="hero-pages">
+<div class="layout">
+
+<nav class="toc" aria-label="目录"><noscript><a href="../index.html">首页</a></noscript></nav>
+
+<main>
+
+<header class="hero" id="overview">
+  <div class="kicker">SKILL · HERO-PAGES</div>
+  <h1>Hero 宣传页</h1>
+  <p class="lead">维护与接入统一托管在私有仓库 <code>imelonkid/melon-pages</code> 的产品 Hero 宣传页：零额外容器进程、按域名路由、30 天静态资源版本化、三端响应式与下载校验 QA，以及 PR 审核后由门户人工发布的上线纪律。</p>
+  <div class="stats">
+    <div class="stat"><b>melon-pages</b><span>多站统一私有仓库</span></div>
+    <div class="stat"><b>0 容器</b><span>边缘 OpenResty 直出</span></div>
+    <div class="stat"><b>64 MiB</b><span>全站打包体积硬上限</span></div>
+    <div class="stat"><b>PR → 门户</b><span>不从本机或 Agent 直发</span></div>
+  </div>
+</header>
+
+<section id="trigger" data-toc="什么时候用">
+  <h2>什么时候用</h2>
+  <div class="flow"><span class="s">改 Hero 页</span><span class="s">更新官网 / 宣传页</span><span class="s">新增产品落地页</span><span class="s">维护 melon-pages</span><span class="s">hero page</span></div>
+  <p class="intro">只面向纯公开静态页面（HTML / CSS / JS / 图片），不包含后端接口、用户数据、登录态或密钥。主机坐标、证书路径与站点绝对目录运行时从私有运维仓库 <code>$OPS_REPO</code> 读取。</p>
+</section>
+
+<section id="model" data-toc="统一仓库与路由">
+  <h2>统一仓库与零进程路由</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>部分</th><th>约定</th></tr></thead>
+    <tbody>
+      <tr><td><code>site/&lt;domain&gt;/</code></td><td>各产品独立目录，包含 <code>index.html</code> 与带版本号的 <code>assets/</code></td></tr>
+      <tr><td><code>site/shared/</code></td><td>跨站共享静态资源，经 Nginx <code>alias</code> 挂载，<b>禁止软链接</b></td></tr>
+      <tr><td><code>site/index.html</code></td><td>根目录索引页，<code>page_artifact.py</code> 与 <code>check-hero.py</code> 均强校验</td></tr>
+      <tr><td><code>sites.yaml</code></td><td>结构化站点注册表：<code>domain</code>、<code>routing_mode</code>、<code>assets_version</code>、<code>download_manifest</code> 等</td></tr>
+      <tr><td>纯 Hero 域名</td><td>由边缘 <code>hero-pages.conf</code> 的显式白名单 <code>map $host</code> 统一分发，未命中返回 404</td></tr>
+      <tr><td>混合 API + Hero 域名</td><td>各自 <code>&lt;domain&gt;.conf</code> 保留 <code>/v1/</code> 与 <code>/health</code> 后端转发，静态路由指向 <code>&lt;站点目录&gt;/current/&lt;domain&gt;</code></td></tr>
+      <tr><td>版本探针</td><td>两类配置均须精确匹配 <code>location = /.page-release.json</code> 并用 <code>alias</code> 指向 <code>&lt;站点目录&gt;/current/.page-release.json</code>（<code>no-store</code>）</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="rules" data-toc="打包与缓存">
+  <h2>打包约束与缓存规则</h2>
+  <div class="principles">
+    <div class="pr"><h4>全站体积 ≤ 64 MiB</h4><p>硬上限覆盖所有已接入站点总和；CI 预警线 &lt; 60 MiB，图片按展示尺寸压缩。</p></div>
+    <div class="pr"><h4>静态资源版本化</h4><p><code>/index.html</code> 不缓存，<code>/assets/</code> 缓存 30 天；改过的 CSS / JS / 图片必须升文件名版本号（如 <code>hero-v1.css</code> → <code>hero-v2.css</code>）。</p></div>
+    <div class="pr"><h4>零软链接与点文件防护</h4><p><code>site/</code> 下禁止 symlink、<code>..</code> 与已提交的 <code>.page-release.json</code>；边缘规则屏蔽隐藏文件。</p></div>
+    <div class="pr"><h4>无 GitHub SSH 凭据</h4><p><code>release-page.yml</code> 调用 <code>page-release@v2</code> 仅传 OSS 制品，部署由内网受限程序拉取切换。</p></div>
+  </div>
+</section>
+
+<section id="qa" data-toc="QA 与发布">
+  <h2>QA 清单与发布纪律</h2>
+  <ol class="steps">
+    <li><h4>三端响应式实测</h4><p>在桌面 <code>1280px</code>、平板 <code>728px</code>、手机 <code>390px</code> 下检查：无横向溢出、无控制台报错、图片完整无裁切、交互正常。</p></li>
+    <li><h4>多语言与下载校验</h4><p>中英切换（ZH/EN）完整无残留；下载链接用 <code>new URL()</code> 严格校验登记的 HTTPS OSS 前缀与 <code>.dmg</code> 后缀，拒绝凭据、query 与 hash。</p></li>
+    <li><h4>合规页脚</h4><p>保留 ICP 备案号 <code>京ICP备16017845号-2</code> 与 <code>Made by melonkid ↗</code> 署名。</p></li>
+    <li><h4>PR 审阅与门户发版</h4><p>跑通 <code>bash scripts/ci-test.sh</code> 与 <code>gitleaks git . --redact</code> 后提 PR 到 <code>main</code>；Agent 不推发布 tag、不 SSH 部署，由用户合并后在内网门户按 <code>patch</code> / <code>minor</code> / <code>major</code> 手动发布。</p></li>
+  </ol>
+  <footer>melon-skills · <a href="../skills/hero-pages/SKILL.md">查看完整 SKILL.md</a> · 行为以 SKILL.md 为准</footer>
+</section>
+
+</main>
+</div>
+<script src="site.js"></script>
+</body>
+</html>
